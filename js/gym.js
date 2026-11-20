@@ -23,7 +23,7 @@ App.FIN_CATS && null;
 const tags = m => `<span class="tag ${KLC[m.k]}">${esc(KL[m.k])}</span><span class="tag ${EVC[m.e]}">Evidencia ${esc((EV[m.e] || '').toLowerCase())}</span><span class="tag">${esc(LV[m.l])}</span>${m.sup ? '<span class="tag bad">Requiere supervisión</span>' : ''}${m.custom ? '<span class="tag info">Añadido con IA · verificar</span>' : ''}`;
 
 /* mini lienzo con NEXO haciendo el método */
-const nexo = async () => { const all = await App.Lib.chars(); return all.find(c => c.id === (App.state.gymChar || 'volt')) || all.find(c => c.id === 'nexo') || A.defaultCharacters[4]; };
+const nexo = async () => { const all = await App.Lib.chars(); return all.find(c => c.id === App.state.gymChar) || all.find(c => App.Art.isImage(c)) || all.find(c => c.id === 'tomi') || all.find(c => c.id === 'nexo') || A.defaultCharacters[4]; };
 function demoCanvas(cv, m, ch, {animate = true, highlight = false, w = 420, h = 420} = {}) {
   cv.width = w; cv.height = h; const ctx = cv.getContext('2d'); const mv = A.MOVES[m.m] || A.MOVES.idle; const t0 = performance.now();
   if (cv._raf) cancelAnimationFrame(cv._raf);

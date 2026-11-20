@@ -56,10 +56,11 @@ App.applyCustomPrompts = (p, sb) => {
 };
 
 const view = async (main, mod) => {
-  const chars = (await App.Lib.chars()).filter(c => mod === 'gym' ? c.module === 'gym' : c.module !== 'gym');
+  const chars = (await App.Lib.chars()).filter(c => App.charIn(c, mod));
   const settings = await App.Lib.settings();
   let d = {}; try { d = JSON.parse(localStorage.getItem(DRAFT(mod)) || '{}'); } catch {}
   d = {titulo: '', idea: '', guion: '', img: '', anim: '', format: settings.format, anim3d: ((settings.anim || {})[mod]) || (mod === 'gym' ? '3d' : '2d'), cast: mod === 'fin' ? ['nico', 'marcus'] : ['volt'], ...d};
+  d.cast = (d.cast || []).filter(id => chars.some(c => c.id === id)); if (!d.cast.length) d.cast = chars.filter(c => A.isImage(c)).concat(chars.filter(c => !A.isImage(c))).slice(0, 2).map(c => c.id); if (App.NO3D) d.anim3d = '2d';
   main.innerHTML = App.head(mod === 'fin' ? 'Finanzas' : 'Gym', 'Mi video', 'Pega tu propio material (de esta app, de ChatGPT o de donde sea) y el video se hace siguiendo exactamente tu guion y tus indicaciones de imágenes y animación.') + `
   <div class="mv">
     <div class="stack">
@@ -75,7 +76,7 @@ const view = async (main, mod) => {
     <div class="stack mvside">
       <div class="card stack"><h3>Ajustes</h3>
         <label class="f">Formato<select id="mvF">${Object.entries(App.Engine.FORMATS).map(([k, v]) => `<option value="${k}" ${k === d.format ? 'selected' : ''}>${v.label}</option>`).join('')}</select></label>
-        <div><div class="small" style="margin-bottom:6px">Animación</div><div class="chips" id="mv3">${['2d', '3d'].map(k => `<button class="chip" data-a="${k}" aria-pressed="${d.anim3d === k}">${k.toUpperCase()}</button>`).join('')}</div></div>
+        <div ${App.NO3D ? 'hidden' : ''}><div class="small" style="margin-bottom:6px">Animación</div><div class="chips" id="mv3">${['2d', '3d'].map(k => `<button class="chip" data-a="${k}" aria-pressed="${d.anim3d === k}">${k.toUpperCase()}</button>`).join('')}</div></div>
         <div><div class="small" style="margin-bottom:6px">Personajes</div><div class="chips" id="mvC">${chars.map(c => `<button class="chip" data-c="${c.id}" aria-pressed="${d.cast.includes(c.id)}">${esc(c.name)}</button>`).join('')}</div></div>
         <div class="small" id="mvDur"></div>
         <div class="note info small" style="margin:0">${AI.available() ? 'Con IA: Claude convierte tu guion en escenas siguiendo tus prompts al pie de la letra.' : 'Sin IA (versión instalada): las escenas se arman por reglas y se aplican las palabras clave de tus prompts (fondos, zoom, ritmo, gráficos, emojis).'}</div>

@@ -26,10 +26,10 @@ const FIN_TOPICS = {
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 /* ángulos de finanzas: cada uno da título, gancho, enfoque y formato */
 const FIN_ANGLES = [
-  {f: 'Error común', t: x => `${cap(x)}: el error que casi todos cometen`, g: x => `Si haces esto con ${x}, lo estás haciendo al revés.`, a: 'ALEX comete el error típico; MARCUS explica por qué pasa y cómo evitarlo.', why: 'Ver a alguien equivocarse genera identificación.'},
+  {f: 'Error común', t: x => `${cap(x)}: el error que casi todos cometen`, g: x => `Si haces esto con ${x}, lo estás haciendo al revés.`, a: 'BOLI comete el error típico; TOMI explica por qué pasa y cómo evitarlo.', why: 'Ver a alguien equivocarse genera identificación.'},
   {f: 'Mito vs realidad', t: x => `${cap(x)}: mito vs realidad`, g: x => `¿Es verdad todo lo que te dijeron sobre ${x}?`, a: 'Tres creencias populares y qué es cierto en cada una, sin cifras inventadas.', why: 'La curiosidad por la verdad retiene hasta el final.'},
-  {f: 'Paso a paso', t: x => `${cap(x)}: explicación fácil, paso a paso`, g: x => `Nadie me explicó ${x} así de simple.`, a: 'NICO aprende en 3 pasos claros, cada uno con un objeto animado.', why: 'Promesa concreta de aprender algo útil rápido.'},
-  {f: 'Historia', t: x => `La historia de ALEX y ${x}`, g: () => 'ALEX pensaba que lo tenía todo bajo control…', a: 'Una historia corta con problema, giro y lección práctica al final.', why: 'Las historias se recuerdan mejor que los consejos.'},
+  {f: 'Paso a paso', t: x => `${cap(x)}: explicación fácil, paso a paso`, g: x => `Nadie me explicó ${x} así de simple.`, a: 'TOMI aprende en 3 pasos claros, cada uno con un objeto animado.', why: 'Promesa concreta de aprender algo útil rápido.'},
+  {f: 'Historia', t: x => `La historia de BOLI y ${x}`, g: () => 'BOLI pensaba que lo tenía todo bajo control…', a: 'Una historia corta con problema, giro y lección práctica al final.', why: 'Las historias se recuerdan mejor que los consejos.'},
   {f: 'Números de ejemplo', t: x => `${cap(x)}: las cuentas con un ejemplo`, g: () => 'Hagamos las cuentas con un ejemplo sencillo.', cats: ['Finanzas personales', 'Ahorro y presupuestos', 'Administración del dinero', 'Cómo comenzar negocios', 'Dropshipping', 'E-commerce', 'Trading y sus riesgos', 'Inversiones básicas', 'Ingresos activos y pasivos', 'Errores financieros'], a: 'Un ejemplo hipotético con números redondos (y dicho como ejemplo) para ver el efecto.', why: 'Ver las cuentas convence más que la teoría.'},
   {f: 'Lo que nadie dice', t: x => `Lo que nadie te explica sobre ${x}`, g: x => `Hay algo sobre ${x} que casi nadie menciona.`, a: 'El detalle poco conocido, por qué importa y qué hacer con él.', why: 'Promete información que el espectador no tiene.'},
   {f: 'Preguntas', t: x => `3 preguntas antes de decidir sobre ${x}`, g: () => 'Antes de decidir, hazte estas tres preguntas.', a: 'Tres preguntas que ordenan la decisión, con un ejemplo cotidiano.', why: 'Formato práctico que la gente guarda para después.'},
@@ -37,13 +37,13 @@ const FIN_ANGLES = [
 ];
 /* ángulos de gym a partir de las fichas de la biblioteca */
 const GYM_ANGLES = [
-  {f: 'Video explicativo', t: m => `${m.n}: qué es y para quién sirve`, g: m => `Casi nadie te explica bien ${m.n.toLowerCase()}.`, a: () => 'VOLT lo explica a cámara y lo demuestra en 3D: cómo se hace, para quién sirve y precauciones.', why: 'Resuelve una duda concreta con demostración.'},
+  {f: 'Video explicativo', t: m => `${m.n}: qué es y para quién sirve`, g: m => `Casi nadie te explica bien ${m.n.toLowerCase()}.`, a: () => 'Tu personaje lo explica a cámara y lo demuestra en 2D: cómo se hace, para quién sirve y precauciones.', why: 'Resuelve una duda concreta con demostración.'},
   {f: 'Mito vs evidencia', t: m => `${m.n}: ¿qué dice la evidencia?`, g: () => '¿Funciona de verdad o solo es popular?', a: m => `Separa popularidad de efectividad (evidencia: ${m.ev}).`, why: 'La curiosidad por la verdad retiene hasta el final.'},
-  {f: 'Errores comunes', t: m => `${m.n}: 3 errores comunes`, g: () => 'Si haces esto, pierdes el beneficio.', a: () => 'Versión incorrecta y corregida en 3D, con alternativas para principiantes.', why: 'Formato de lista claro y práctico.'},
+  {f: 'Errores comunes', t: m => `${m.n}: 3 errores comunes`, g: () => 'Si haces esto, pierdes el beneficio.', a: () => 'Versión incorrecta y corregida en 2D, con alternativas para principiantes.', why: 'Formato de lista claro y práctico.'},
   {f: 'Video de curiosidades', t: m => `El método poco conocido: ${m.n}`, g: () => 'Pocos entrenan así, y tiene su lógica.', a: m => `Origen, cómo funciona y por qué casi nadie lo usa (${m.kl}).`, why: 'La novedad despierta curiosidad.', only: m => ['P', 'M', 'X'].includes(m.k)},
   {f: 'Short', t: m => `${m.n} en 30 segundos`, g: () => 'Te lo explico en 30 segundos.', a: () => 'Lo esencial: qué es, un consejo de técnica y una precaución.', why: 'Formato corto fácil de terminar y compartir.', dur: 30},
   {f: 'Video comparativo', t: (m, o) => `${m.n} vs ${o.n}`, g: () => '¿Cuál te conviene más?', a: (m, o) => `Comparación lado a lado con tier list: objetivo, dificultad y riesgo de ${m.n} y ${o.n}.`, why: 'Las comparaciones ayudan a decidir.', pair: true},
-  {f: 'Animación anatómica', t: m => `¿Qué músculos trabaja? ${m.n}`, g: () => 'Mira qué se activa en cada repetición.', a: () => 'Demostración 3D con los músculos resaltados en rojo.', why: 'Lo visual explica mejor que las palabras.', only: m => ['A', 'B', 'C', 'E'].includes(m.c)}
+  {f: 'Animación anatómica', t: m => `¿Qué músculos trabaja? ${m.n}`, g: () => 'Mira qué se activa en cada repetición.', a: () => 'Demostración 2D con los músculos resaltados en rojo.', why: 'Lo visual explica mejor que las palabras.', only: m => ['A', 'B', 'C', 'E'].includes(m.c)}
 ];
 
 /* números pseudoaleatorios repetibles (las ideas del día no cambian al recargar) */
@@ -95,7 +95,7 @@ const Ideas = App.Ideas = {
       if ((p.duration || 0) >= 150) out.push({...extra, titulo: `${short} en 30 segundos`, gancho: 'Lo más importante, en medio minuto.', angulo: 'Versión Short del video largo con la idea principal y una invitación a ver el completo.', formato: 'Short', por_que: 'Los Shorts llevan público al video largo.', dur: 30});
       else out.push({...extra, titulo: `${short}: la guía completa`, gancho: 'Te lo explico todo, de principio a fin.', angulo: 'Versión larga por capítulos (horizontal) que amplía el video corto con ejemplos.', formato: 'Video largo', por_que: 'Un tema que ya funcionó en corto puede dar para un video largo.', dur: 480, format: 'horizontal'});
       if (m && App.Gym) { const sib = App.Gym.all().filter(x => x.c === m.c && x.id !== m.id); if (sib.length) { const o = sib[(base.length + out.length) % sib.length]; out.push({...Ideas.gym(m, GYM_ANGLES.find(a => a.pair), o), from: base, src: 'tus videos'}); } }
-      else if (mod === 'fin') { out.push({...extra, titulo: `El error más común con ${short.toLowerCase()}`, gancho: 'Casi todos fallan en lo mismo.', angulo: 'ALEX comete el error del tema anterior y MARCUS lo corrige.', formato: 'Error común', por_que: 'Mismo tema, enfoque nuevo y muy compartible.', dur: 30}); }
+      else if (mod === 'fin') { out.push({...extra, titulo: `El error más común con ${short.toLowerCase()}`, gancho: 'Casi todos fallan en lo mismo.', angulo: 'BOLI comete el error del tema anterior y TOMI lo corrige.', formato: 'Error común', por_que: 'Mismo tema, enfoque nuevo y muy compartible.', dur: 30}); }
     });
     return out;
   },

@@ -389,6 +389,6 @@ Art3D.draw = (ctx, W, H, o) => {
   return cam;
 };
 /* mode 'talk': una imagen subida habla en 2D (se ve tal cual); en ejercicios usa su doble 3D */
-Art3D.supports = (ch, mode) => !!ch && !/stick/.test((ch.look || {}).style || '') && !(mode === 'talk' && A.isImage(ch));
+Art3D.supports = (ch, mode) => !App.NO3D && !!ch && !/stick/.test((ch.look || {}).style || '') && !(mode === 'talk' && A.isImage(ch));
 Art3D.themeFor = bg => ({gym_oscuro: 'gymdark', gimnasio: 'gymdark', plano_azul: 'blueprint', rayos: 'rays', cuadricula_osc: 'dark', ciudad: 'dark', muro: 'dark', negocio: 'dark'})[bg] || 'light';
 })();

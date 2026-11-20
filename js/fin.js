@@ -32,11 +32,11 @@ V['fin-dashboard'] = async (main) => {
 function heroLoop(cv, mod) {
   const chars = A.defaultCharacters;
   const tl = E.build({format: 'horizontal', module: mod, subs: false, progressBar: false, storyboard: {scenes: mod === 'fin'
-    ? [{bg: 'estudio', chars: [{id: 'lia', pos: 'izq', act: 'present', expr: 'confident'}, {id: 'alex', pos: 'der', act: 'think', expr: 'thinking'}], speaker: 'lia', dialogue: 'Antes de gastar, mira a dónde va cada peso.', text: 'Tu dinero, claro', objects: ['chart_up', 'piggy'], camera: 'zoom_in', dur: 5, transition: 'cut'},
-       {bg: 'ciudad', chars: [{id: 'marcus', pos: 'izq', act: 'talk', expr: 'happy'}, {id: 'nico', pos: 'der', act: 'celebrate', expr: 'excited'}], speaker: 'marcus', dialogue: 'Paso a paso.', text: 'Aprende y crece', objects: ['coins'], camera: 'push_speaker', dur: 5, transition: 'wipe'}]
-    : [{bg: 'gimnasio', chars: [{id: 'nexo', move: 'kbswing'}], speaker: 'narrador', dialogue: '', text: 'Training Lab', objects: ['muscle'], camera: 'zoom_in', dur: 4, transition: 'cut', highlight: true},
-       {bg: 'patio', chars: [{id: 'nexo', move: 'carry'}], speaker: 'narrador', dialogue: '', text: 'Métodos distintos', objects: [], camera: 'pan_left', dur: 4, transition: 'slide'},
-       {bg: 'muro', chars: [{id: 'nexo', move: 'climb'}], speaker: 'narrador', dialogue: '', text: 'Con evidencia', objects: ['book'], camera: 'zoom_out', dur: 4, transition: 'fade'}]}}, chars);
+    ? [{bg: 'estudio', chars: [{id: 'tomi', pos: 'izq', act: 'present', expr: 'confident'}, {id: 'boli', pos: 'der', act: 'think', expr: 'thinking'}], speaker: 'tomi', dialogue: 'Antes de gastar, mira a dónde va cada peso.', text: 'Tu dinero, claro', objects: ['chart_up', 'piggy'], camera: 'zoom_in', dur: 5, transition: 'cut'},
+       {bg: 'ciudad', chars: [{id: 'tomi', pos: 'izq', act: 'talk', expr: 'happy'}, {id: 'boli', pos: 'der', act: 'celebrate', expr: 'excited'}], speaker: 'tomi', dialogue: 'Paso a paso.', text: 'Aprende y crece', objects: ['coins'], camera: 'push_speaker', dur: 5, transition: 'wipe'}]
+    : [{bg: 'gimnasio', chars: [{id: 'tomi', move: 'kbswing'}], speaker: 'narrador', dialogue: '', text: 'Training Lab', objects: ['muscle'], camera: 'zoom_in', dur: 4, transition: 'cut', highlight: true},
+       {bg: 'patio', chars: [{id: 'tomi', move: 'carry'}], speaker: 'narrador', dialogue: '', text: 'Métodos distintos', objects: [], camera: 'pan_left', dur: 4, transition: 'slide'},
+       {bg: 'muro', chars: [{id: 'tomi', move: 'climb'}], speaker: 'narrador', dialogue: '', text: 'Con evidencia', objects: ['book'], camera: 'zoom_out', dur: 4, transition: 'fade'}]}}, chars);
   const res = .4; cv.width = tl.W * res; cv.height = tl.H * res; const ctx = cv.getContext('2d'); const t0 = performance.now();
   const loop = () => { if (!document.body.contains(cv)) return; ctx.save(); ctx.scale(res, res); E.drawFrame(ctx, tl, ((performance.now() - t0) / 1000) % tl.duration); ctx.restore(); requestAnimationFrame(loop); };
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches) loop(); else { ctx.scale(res, res); E.drawFrame(ctx, tl, 2); }
@@ -130,7 +130,7 @@ V['fin-guiones'] = main => scriptsView(main, 'fin');
 
 /* ---------- Miniaturas ---------- */
 const thumbsView = async (main, mod) => {
-  const ps = (await App.Projects.list(mod)).filter(p => p.thumb); const chars = (await App.Lib.chars()).filter(c => mod === 'gym' ? c.module === 'gym' : c.module !== 'gym'); const brand = await App.Lib.brand(mod);
+  const ps = (await App.Projects.list(mod)).filter(p => p.thumb); const chars = (await App.Lib.chars()).filter(c => App.charIn(c, mod)); const brand = await App.Lib.brand(mod);
   main.innerHTML = App.head(mod === 'fin' ? 'Finanzas' : 'Gym', 'Miniaturas', 'Las miniaturas elegidas de tus videos y un creador rápido con tus personajes y colores.') + `
   <div class="stage"><div class="card"><canvas id="tq" width="1280" height="720" style="width:100%;border-radius:10px;background:#000"></canvas></div>
   <div class="card stack"><h3>Creador rápido</h3><label class="f">Texto (máx. 4–5 palabras)<input id="tqT" value="${mod === 'fin' ? 'Deja de perder dinero' : 'Entrena distinto'}"></label>
@@ -237,7 +237,7 @@ const configView = async (main) => {
     <label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="sBar" ${s.progressBar ? 'checked' : ''}> Barra de progreso arriba del video</label>
     <label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="sHandle" ${s.showHandle ? 'checked' : ''}> Mostrar @usuario del canal en el video</label>
     <label class="f">Estilo visual de Gym<select id="sGym"><option value="estudio3d" ${(s.gymStyle || 'estudio3d') === 'estudio3d' ? 'selected' : ''}>Estudio 3D completo: personaje 3D hablando de frente, ejercicios en 3D, tier lists, pizarras y gráficos</option><option value="mixto" ${s.gymStyle === 'mixto' ? 'selected' : ''}>Mixto: habla a cámara en 2D y ejercicios en 3D</option><option value="plano" ${s.gymStyle === 'plano' ? 'selected' : ''}>Todo en 2D</option></select></label>
-    <div class="grid g2"><label class="f">Animación por defecto en Finanzas<select id="sAf"><option value="2d" ${(s.anim || {}).fin !== '3d' ? 'selected' : ''}>2D</option><option value="3d" ${(s.anim || {}).fin === '3d' ? 'selected' : ''}>3D</option></select></label><label class="f">Animación por defecto en Gym<select id="sAg"><option value="2d" ${(s.anim || {}).gym === '2d' ? 'selected' : ''}>2D</option><option value="3d" ${(s.anim || {}).gym !== '2d' ? 'selected' : ''}>3D</option></select></label></div>
+    <div class="grid g2" ${App.NO3D ? 'hidden' : ''}><label class="f">Animación por defecto en Finanzas<select id="sAf"><option value="2d" ${(s.anim || {}).fin !== '3d' ? 'selected' : ''}>2D</option><option value="3d" ${(s.anim || {}).fin === '3d' ? 'selected' : ''}>3D</option></select></label><label class="f">Animación por defecto en Gym<select id="sAg"><option value="2d" ${(s.anim || {}).gym === '2d' ? 'selected' : ''}>2D</option><option value="3d" ${(s.anim || {}).gym !== '2d' ? 'selected' : ''}>3D</option></select></label></div>
     <label class="f">Motion (íconos animados en pantalla)<select id="sMo"><option value="alto" ${(s.motion || 'alto') === 'alto' ? 'selected' : ''}>Alto: muchos íconos en movimiento, ritmo rápido</option><option value="medio" ${s.motion === 'medio' ? 'selected' : ''}>Medio: pocos íconos</option><option value="off" ${s.motion === 'off' ? 'selected' : ''}>Apagado</option></select></label>
     <label class="f">Calidad de render<select id="sQ"><option value="cloud" ${s.quality !== 'max' ? 'selected' : ''}>Optimizada para la nube (≤ 18 MB)</option><option value="max" ${s.quality === 'max' ? 'selected' : ''}>Máxima</option></select></label>
     <button class="btn primary" id="sSave">${icon('check')}Guardar</button></div>

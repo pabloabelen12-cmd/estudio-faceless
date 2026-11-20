@@ -8,7 +8,7 @@ const E = App.Engine, A = App.Art;
 /* ---------- biblioteca de personajes, ajustes y marca ---------- */
 const Lib = App.Lib = {
   async repoPoses() { if (this._rp !== undefined) return this._rp; if (!/^https?:/.test(location.protocol) || location.hostname.endsWith('claude.ai') || location.hostname.endsWith('claudeusercontent.com')) return (this._rp = null); try { const r = await fetch('poses/poses.json', {cache: 'no-cache'}); this._rp = r.ok ? await r.json() : null; } catch { this._rp = null; } return this._rp; },
-  async chars() { const list = await this.chars0(); const rp = await this.repoPoses(); if (rp && rp.characters) rp.characters.forEach(e => { let c = list.find(x => x.id === e.id || (e.name && x.name.toLowerCase() === e.name.toLowerCase())); if (!c && e.character) { c = clone(e.character); list.push(c); } if (c && e.poses) { c.look = c.look || {}; c.look.poses = {...Object.fromEntries(Object.entries(e.poses).map(([k, v]) => [k, {src: v}])), ...(c.look.poses || {})}; } }); return list; },
+  async chars() { const list = (await this.chars0()).filter(c => !App.HIDDEN_CHARS.includes(c.id)).map(c => ['tomi', 'boli'].includes(c.id) ? {...c, module: 'both'} : c); const rp = await this.repoPoses(); if (rp && rp.characters) rp.characters.forEach(e => { let c = list.find(x => x.id === e.id || (e.name && x.name.toLowerCase() === e.name.toLowerCase())); if (!c && e.character) { c = clone(e.character); list.push(c); } if (c && e.poses) { c.look = c.look || {}; c.look.poses = {...Object.fromEntries(Object.entries(e.poses).map(([k, v]) => [k, {src: v}])), ...(c.look.poses || {})}; } }); return list; },
   async chars0() { const d = await Store.get('chars'); const saved = (d && d.list) || []; const base = A.defaultCharacters.map(c => ({...clone(c), ...(saved.find(s => s.id === c.id) || {})})); return base.concat(saved.filter(s => !A.defaultCharacters.some(c => c.id === s.id))); },
   async saveChars(list) { await Store.set('chars', {type: 'chars', list}); },
   async settings() { return {type: 'settings', duration: 30, format: 'vertical', music: {fin: 'upbeat', gym: 'motivacion'}, subs: true, progressBar: true, showHandle: true, quality: 'cloud', render3d: true, gymStyle: 'estudio3d', motion: 'alto', anim: {fin: '2d', gym: '3d'}, ...(await Store.get('settings') || {})}; },
@@ -106,15 +106,15 @@ Formato: {"propuestas":[{"titulo":"","gancho":"frase inicial de máximo 15 palab
   proposalsTemplate(p, chars) {
     const idea = p.idea.trim().split(/\.\s/)[0].replace(/\.$/, ''); const ids = chars.map(c => c.id);
     const pick = (...want) => want.filter(w => ids.includes(w)).concat(ids).filter((v, i, a) => a.indexOf(v) === i).slice(0, 2);
-    const gc = (p.cast && p.cast[0]) || 'volt', gn = (chars.find(c => c.id === gc) || {name: 'VOLT'}).name;
+    const gc = (p.cast && p.cast[0]) || (chars[0] || {}).id, gn = (chars.find(c => c.id === gc) || {name: 'TU PERSONAJE'}).name;
     if (p.module === 'gym') return [
-      {titulo: `${idea}: explicado en ${fmtDur(p.duration)}`, gancho: `Casi nadie te explica esto sobre ${idea.toLowerCase()}.`, concepto: `${gn} habla a cámara en 2D y la demostración del movimiento se ve en 3D: qué es, cómo se hace y para quién sirve.`, personajes: [gc], estilo: 'Explicativo con demostración', duracion: p.duration, por_que: 'Muestra el método en acción y resuelve una duda concreta.'},
+      {titulo: `${idea}: explicado en ${fmtDur(p.duration)}`, gancho: `Casi nadie te explica esto sobre ${idea.toLowerCase()}.`, concepto: `${gn} habla a cámara y demuestra el movimiento en 2D: qué es, cómo se hace y para quién sirve.`, personajes: [gc], estilo: 'Explicativo con demostración', duracion: p.duration, por_que: 'Muestra el método en acción y resuelve una duda concreta.'},
       {titulo: `${idea}: ¿qué dice la evidencia?`, gancho: '¿Funciona de verdad o es solo popular?', concepto: 'Separa popularidad de efectividad: qué está respaldado, qué no y qué precauciones tomar.', personajes: [gc], estilo: 'Mito contra evidencia', duracion: p.duration, por_que: 'La curiosidad por la verdad retiene hasta el final.'},
-      {titulo: `3 errores comunes con ${idea.toLowerCase()}`, gancho: 'Si haces esto, estás perdiendo el beneficio.', concepto: `${gn} muestra en 3D la versión incorrecta y la corregida, con riesgos y alternativas para principiantes.`, personajes: [gc], estilo: 'Errores y correcciones', duracion: p.duration, por_que: 'Formato de lista claro y práctico.'}];
+      {titulo: `3 errores comunes con ${idea.toLowerCase()}`, gancho: 'Si haces esto, estás perdiendo el beneficio.', concepto: `${gn} muestra en 2D la versión incorrecta y la corregida, con riesgos y alternativas para principiantes.`, personajes: [gc], estilo: 'Errores y correcciones', duracion: p.duration, por_que: 'Formato de lista claro y práctico.'}];
     return [
-      {titulo: `El error con ${idea.toLowerCase()} que casi todos cometen`, gancho: `¿Y si el problema con ${idea.toLowerCase()} no es lo que crees?`, concepto: 'ALEX comete el error típico y MARCUS le explica por qué pasa y cómo evitarlo con un ejemplo cotidiano.', personajes: pick('alex', 'marcus'), estilo: 'Historia con error y lección', duracion: p.duration, por_que: 'Ver a alguien equivocarse genera identificación.'},
-      {titulo: `${idea}: explicado desde cero`, gancho: `Nadie me explicó ${idea.toLowerCase()} así de simple.`, concepto: 'NICO aprende el concepto paso a paso; cada paso se ilustra con objetos animados.', personajes: pick('nico', 'marcus'), estilo: 'Explicación paso a paso', duracion: p.duration, por_que: 'Promesa clara de aprender algo útil rápido.'},
-      {titulo: `Lo que aprendí probando ${idea.toLowerCase()}`, gancho: 'Lo probé en pequeño antes de arriesgar más.', concepto: 'LÍA cuenta cómo validar la idea con poco dinero, qué medir y qué riesgos considerar.', personajes: pick('lia', 'nico'), estilo: 'Caso práctico narrado', duracion: p.duration, por_que: 'Enfoque práctico y honesto, sin promesas.'}];
+      {titulo: `El error con ${idea.toLowerCase()} que casi todos cometen`, gancho: `¿Y si el problema con ${idea.toLowerCase()} no es lo que crees?`, concepto: 'BOLI comete el error típico y TOMI le explica por qué pasa y cómo evitarlo con un ejemplo cotidiano.', personajes: pick('boli', 'tomi'), estilo: 'Historia con error y lección', duracion: p.duration, por_que: 'Ver a alguien equivocarse genera identificación.'},
+      {titulo: `${idea}: explicado desde cero`, gancho: `Nadie me explicó ${idea.toLowerCase()} así de simple.`, concepto: 'TOMI aprende el concepto paso a paso; cada paso se ilustra con objetos animados.', personajes: pick('tomi', 'boli'), estilo: 'Explicación paso a paso', duracion: p.duration, por_que: 'Promesa clara de aprender algo útil rápido.'},
+      {titulo: `Lo que aprendí probando ${idea.toLowerCase()}`, gancho: 'Lo probé en pequeño antes de arriesgar más.', concepto: 'TOMI cuenta cómo validar la idea con poco dinero, qué medir y qué riesgos considerar.', personajes: pick('tomi', 'boli'), estilo: 'Caso práctico narrado', duracion: p.duration, por_que: 'Enfoque práctico y honesto, sin promesas.'}];
   },
   /* Guion largo: primero un esquema (gancho, problema, capítulos, conclusión y llamada a la acción) y después
      un capítulo por llamada. Se guarda tras cada paso: si la IA llega a su límite, se continúa donde quedó. */
@@ -474,10 +474,10 @@ App.narrations = {};
 
 /* ============ Vista: Crear video (flujo completo) ============ */
 App.productionView = async (main, mod) => {
-  const chars = (await Lib.chars()).filter(c => c.module === mod || (mod === 'fin' && c.module !== 'gym'));
+  const chars = (await Lib.chars()).filter(c => App.charIn(c, mod));
   const allChars = await Lib.chars(); await A.preload(allChars);
   const settings = await Lib.settings(); const brand = await Lib.brand(mod);
-  const animOf = () => p.anim || ((settings.anim || {})[mod]) || (mod === 'gym' ? (settings.gymStyle === 'plano' ? '2d' : '3d') : '2d');
+  const animOf = () => App.NO3D ? '2d' : (p.anim || ((settings.anim || {})[mod]) || (mod === 'gym' ? (settings.gymStyle === 'plano' ? '2d' : '3d') : '2d'));
   const styleOf = () => animOf() === '3d' ? (mod === 'gym' && settings.gymStyle === 'mixto' ? 'mixto' : 'estudio3d') : 'plano';
   const look3d = () => ({render3d: animOf() === '3d', gymStyle: styleOf(), motion: p.motion || settings.motion || 'alto'});
   let p = await Projects.get(Projects.getCurrent(mod));
@@ -486,6 +486,7 @@ App.productionView = async (main, mod) => {
   if (!p) { const blank = (await Projects.list(mod)).find(x => !x.idea && !x.proposals); p = blank || await Projects.create(mod); Projects.setCurrent(mod, p.id); }
   if (App.state.jumpStep != null) { p.step = App.state.jumpStep; App.state.jumpStep = null; }
   App.state.gymStyle = styleOf();
+  { const ok = (p.cast || []).filter(id => chars.some(c => c.id === id)); if (!ok.length && chars.length) ok.push(...(chars.filter(c => A.isImage(c)).slice(0, 1).map(c => c.id).concat(chars.filter(c => !A.isImage(c)).slice(0, 2).map(c => c.id))).slice(0, 2)); if (ok.join() !== (p.cast || []).join()) { p.cast = ok; } }
   let player = null;
   const save = () => Projects.save(p);
   const projects = await Projects.list(mod);
@@ -522,7 +523,7 @@ App.productionView = async (main, mod) => {
         <div class="chips" id="durs">${DUR_PRESETS.map(d => `<button class="chip" aria-pressed="${d === p.duration}" data-d="${d}">${fmtDur(d)}</button>`).join('')}</div>
         <div class="row" style="align-items:end;gap:8px"><label class="f" style="width:96px">Minutos<input type="number" id="dMin" min="0" max="30" step="1" inputmode="numeric"></label><label class="f" style="width:96px">Segundos<input type="number" id="dSec" min="0" max="59" step="1" inputmode="numeric"></label><span class="small mute" style="padding-bottom:10px">Duración personalizada</span></div>
         <div class="note" id="durEst" style="margin:0"></div></div>
-      <div><div class="small" style="margin-bottom:6px">Animación del video</div><div class="chips" id="animSel">${[['2d', '2D (dibujos animados; tus personajes-imagen se ven tal cual)'], ['3d', '3D (personajes en 3D; las imágenes usan su doble 3D)']].map(([k, l]) => `<button class="chip" data-a="${k}" aria-pressed="${animOf() === k}">${l}</button>`).join('')}</div></div>
+      <div ${App.NO3D ? 'hidden' : ''}><div class="small" style="margin-bottom:6px">Animación del video</div><div class="chips" id="animSel">${[['2d', '2D (dibujos animados; tus personajes-imagen se ven tal cual)'], ['3d', '3D (personajes en 3D; las imágenes usan su doble 3D)']].map(([k, l]) => `<button class="chip" data-a="${k}" aria-pressed="${animOf() === k}">${l}</button>`).join('')}</div></div>
       <div><div class="small" style="margin-bottom:6px">Personajes del reparto</div><div class="chips" id="cast">${chars.map(c => `<button class="chip" aria-pressed="${p.cast.includes(c.id)}" data-c="${c.id}">${esc(c.name)}</button>`).join('')}</div></div>
       ${p.methodId && App.Gym ? `<div class="note info">Basado en la ficha: <b>${esc(App.Gym.byId(p.methodId)?.n || '')}</b>${p.formatHint ? ' · ' + esc(p.formatHint) : ''}</div>` : ''}
       <div class="row"><button class="btn primary" id="genProps">${icon('spark')}Generar propuestas con IA</button><button class="btn" id="tplProps">Usar plantillas (sin IA)</button></div>
@@ -621,7 +622,7 @@ App.productionView = async (main, mod) => {
   const sceneCanvas = (tl, i, w = 110) => { const cv = document.createElement('canvas'); const s = tl.scenes[i]; if (!s) return cv; const scale = w / tl.W; cv.width = w; cv.height = Math.round(tl.H * scale); const c = cv.getContext('2d'); c.scale(scale, scale); E.drawFrame(c, tl, s.start + Math.min(s.dur * .6, 1.6)); return cv; };
   const stepStory = () => {
     if (!p.script) { body().innerHTML = `<div class="empty">Primero crea el guion.</div>`; return; }
-    const sbChars = allChars.filter(c => mod === 'gym' ? true : c.module !== 'gym');
+    const sbChars = allChars.filter(c => App.charIn(c, mod));
     const partial = p.storyboard && p.storyboard.partial;
     if (!p.storyboard || !p.storyboard.scenes.length || partial) {
       const nb = Gen.sbBlocks(p).length;
@@ -890,7 +891,7 @@ App.productionView = async (main, mod) => {
       mark('script', 'run'); if (!p.script) { p.script = AI.available() ? await Gen.script(p, chars, {onProgress: (k, n, m) => { prog(k, n, m); mark('script', 'run', m); }, save}) : null; if (!p.script) throw new Error('Sin IA disponible para escribir el guion. Escríbelo en el paso Guion (plantilla) y vuelve a pulsar el botón.'); await save(); } mark('script', 'ok', p.script.source === 'ia' ? 'IA' : 'tuyo');
       if (stop) return;
       mark('storyboard', 'run'); if (!p.storyboard || !p.storyboard.scenes.length || p.storyboard.partial) {
-        try { p.storyboard = await Gen.storyboard(p, allChars.filter(c => mod === 'gym' ? true : c.module !== 'gym'), {onProgress: (k, n, m) => { prog(k, n, m); mark('storyboard', 'run', m); }, save, rulesChars: chars}); }
+        try { p.storyboard = await Gen.storyboard(p, allChars.filter(c => App.charIn(c, mod)), {onProgress: (k, n, m) => { prog(k, n, m); mark('storyboard', 'run', m); }, save, rulesChars: chars}); }
         catch (e) {
           // el storyboard por reglas no usa IA: se completa lo que falte y se avisa
           if (p.storyboard && p.storyboard.partial) { const wc = u => u.reduce((a, s) => a + s.text.split(/\s+/).filter(Boolean).length, 0); Gen.sbBlocks(p).slice(p.storyboard.partial.done).forEach(bl => p.storyboard.scenes.push(...Gen.storyboardRules(p, chars, bl, wc(bl) / WPS).scenes)); p.storyboard.source = 'mixto'; delete p.storyboard.partial; }
@@ -922,7 +923,7 @@ App.productionView = async (main, mod) => {
 /* ============ Vistas compartidas: personajes, videos, miniaturas, guiones ============ */
 App.charactersView = async (main, mod) => {
   let list = await Lib.chars();
-  const mine = () => list.filter(c => mod === 'gym' ? c.module === 'gym' : c.module !== 'gym');
+  const mine = () => list.filter(c => App.charIn(c, mod));
   await A.preload(mine());
   main.innerHTML = App.head(mod === 'fin' ? 'Finanzas' : 'Gym', mod === 'fin' ? 'Personajes' : 'NEXO y personajes', 'Biblioteca de personajes originales y recurrentes. Su diseño y su voz se guardan y se reutilizan igual en todas las escenas y videos. También puedes crear uno con una imagen de tu computadora.', `<button class="btn" id="newImg">${icon('image')}Desde una imagen</button><button class="btn primary" id="newC">${icon('plus')}Nuevo personaje</button><input type="file" id="imgPick" accept="${App.CharImage.accept}" hidden>`) + `<div class="grid gauto" id="cg"></div>`;
   const isImg = c => A.isImage(c);
@@ -936,7 +937,7 @@ App.charactersView = async (main, mod) => {
         const cv = $(`[data-cc="${c.id}"]`); if (!cv) return; const x = cv.getContext('2d'); x.clearRect(0, 0, 300, 300);
         const ph = Math.floor(t / 4);
         if (isImg(c)) {
-          if (c.module === 'gym' && ph % 2 === 1 && App.Art3D) { const mv = A.moveList[Math.floor(t / 8) % A.moveList.length].id; App.Art3D.draw(x, 300, 300, {char: c, move: mv, t, highlight: true, theme: 'light', fitH: .8}); label(x, 'Doble 3D para ejercicios · ' + A.MOVES[mv].label, true); return; }
+          if (c.module === 'gym' && ph % 2 === 1 && App.Art3D && !App.NO3D) { const mv = A.moveList[Math.floor(t / 8) % A.moveList.length].id; App.Art3D.draw(x, 300, 300, {char: c, move: mv, t, highlight: true, theme: 'light', fitH: .8}); label(x, 'Doble 3D para ejercicios · ' + A.MOVES[mv].label, true); return; }
           const act = acts[(i + Math.floor(t / 3)) % acts.length]; const {pose} = A.poseAt(act, t);
           A.drawCharacter(x, c, {x: 150, y: 285, scale: .78, facing: 1, pose, act, expr: ['happy', 'confident', 'thinking', 'excited', 'surprised'][(i + Math.floor(t / 3)) % 5], t, talk: act === 'talk' ? Math.abs(Math.sin(t * 12)) * .8 : 0});
           label(x, 'Imagen animada · ' + (A.ACT_LABEL[act] || act)); return;
@@ -988,7 +989,7 @@ App.charactersView = async (main, mod) => {
     const loop = () => {
       if (!document.body.contains(cv)) return; const t = (performance.now() - t0) / 1000; const x = cv.getContext('2d'); x.clearRect(0, 0, 240, 300); const ch = read();
       const ph = Math.floor(t / 4) % 3;
-      if (A.isImage(ch) && mod === 'gym' && ph === 2 && App.Art3D) { App.Art3D.draw(x, 240, 300, {char: ch, move: 'squat', t, theme: 'light', fitH: .8}); q('#k_cvlbl').textContent = 'Video 3D: doble 3D con los colores de abajo'; }
+      if (A.isImage(ch) && mod === 'gym' && ph === 2 && App.Art3D && !App.NO3D) { App.Art3D.draw(x, 240, 300, {char: ch, move: 'squat', t, theme: 'light', fitH: .8}); q('#k_cvlbl').textContent = 'Video 3D: doble 3D con los colores de abajo'; }
       else if (A.isImage(ch) && mod === 'gym' && ph === 1) { const mv = ['squat', 'curl', 'press', 'sprint', 'pushup'][Math.floor(t / 12) % 5]; const {pose} = A.poseAt(mv, t); A.drawCharacter(x, ch, {x: 120, y: 285, scale: .76, facing: 1, pose, act: mv, exercise: true, expr: 'confident', t}); q('#k_cvlbl').textContent = 'Video 2D: ' + A.MOVES[mv].label + ' con tu imagen'; }
       else { const act = A.isImage(ch) ? ['talk', 'celebrate', 'think', 'worried'][Math.floor(t / 2.5) % 4] : 'talk'; const {pose} = A.poseAt(act, t); A.drawCharacter(x, ch, {x: 120, y: 285, scale: .76, facing: 1, pose, act, expr: act === 'think' ? 'thinking' : act === 'worried' ? 'worried' : 'happy', t, talk: act === 'talk' ? Math.abs(Math.sin(t * 12)) * .7 : 0}); q('#k_cvlbl').textContent = A.isImage(ch) ? 'Vista previa: ' + (A.ACT_LABEL[act] || act) : ''; }
       requestAnimationFrame(loop);

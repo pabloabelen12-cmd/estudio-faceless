@@ -3,6 +3,10 @@
 const App = window.App = {views:{}, state:{}};
 /* versión de escritorio (programa en tu laptop): js/desktop.js define window.EFS_DESKTOP */
 App.DESKTOP = window.EFS_DESKTOP || null;
+/* por ahora todo en 2D y solo con los personajes del usuario y los stickman */
+App.NO3D = true;
+App.HIDDEN_CHARS = ['nico', 'marcus', 'alex', 'lia', 'nexo', 'volt', 'kora'];
+App.charIn = (c, mod) => c.module === 'both' || (App.Art && App.Art.isImage(c)) || (mod === 'gym' ? c.module === 'gym' : c.module !== 'gym');
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
