@@ -289,13 +289,14 @@ const Files = App.Files = {
 /* ---------- Navegación: dos estudios ---------- */
 const NAV = App.NAV = {
   fin: {label: 'Finanzas', icon: 'coin', items: [
-    ['dashboard', 'Dashboard', 'dash'], ['crear', 'Crear video', 'plus'], ['ideas', 'Ideas', 'bulb'], ['investigacion', 'Investigación', 'search'],
-    ['personajes', 'Personajes', 'users'], ['guiones', 'Guiones', 'doc'], ['videos', 'Videos', 'film'], ['miniaturas', 'Miniaturas', 'image'],
-    ['identidad', 'Identidad del canal', 'tag'], ['costos', 'Control de costos', 'coin'], ['config', 'Configuración', 'gear']]},
+    ['dashboard', 'Inicio', 'home'], ['-', 'Crear'], ['mivideo', 'Mi video (guion propio)', 'doc'], ['crear', 'Crear video', 'plus'], ['ideas', 'Ideas', 'bulb'],
+    ['-', 'Biblioteca'], ['videos', 'Videos', 'film'], ['personajes', 'Personajes', 'users'], ['guiones', 'Guiones', 'doc'], ['miniaturas', 'Miniaturas', 'image'],
+    ['-', 'Canal'], ['identidad', 'Identidad del canal', 'tag'], ['investigacion', 'Investigación', 'search'],
+    ['-', 'General'], ['costos', 'Control de costos', 'coin'], ['config', 'Configuración', 'gear']]},
   gym: {label: 'Gym', icon: 'dumbbell', items: [
-    ['inicio', 'Inicio', 'home'], ['biblioteca', 'Biblioteca de métodos', 'book'], ['comparador', 'Comparador', 'compare'],
-    ['raros', 'Métodos poco conocidos', 'flask'], ['descubrir', 'Descubrimiento de contenido', 'compass'], ['crear', 'Crear video', 'plus'],
-    ['videos', 'Videos', 'film'], ['personajes', 'NEXO y personajes', 'users'], ['evidencia', 'Evidencia y seguridad', 'shield'],
+    ['inicio', 'Inicio', 'home'], ['-', 'Crear'], ['mivideo', 'Mi video (guion propio)', 'doc'], ['crear', 'Crear video', 'plus'], ['descubrir', 'Ideas y ángulos', 'compass'],
+    ['-', 'Biblioteca'], ['videos', 'Videos', 'film'], ['personajes', 'Personajes', 'users'],
+    ['-', 'Laboratorio'], ['biblioteca', 'Métodos de entrenamiento', 'book'], ['comparador', 'Comparador', 'compare'], ['raros', 'Métodos poco conocidos', 'flask'], ['evidencia', 'Evidencia y seguridad', 'shield'],
     ['-', 'General'], ['costos', 'Control de costos', 'coin'], ['config', 'Configuración', 'gear']]}
 };
 App.defaultView = {fin: 'dashboard', gym: 'inicio'};

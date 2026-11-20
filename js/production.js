@@ -7,7 +7,9 @@ const E = App.Engine, A = App.Art;
 
 /* ---------- biblioteca de personajes, ajustes y marca ---------- */
 const Lib = App.Lib = {
-  async chars() { const d = await Store.get('chars'); const saved = (d && d.list) || []; const base = A.defaultCharacters.map(c => ({...clone(c), ...(saved.find(s => s.id === c.id) || {})})); return base.concat(saved.filter(s => !A.defaultCharacters.some(c => c.id === s.id))); },
+  async repoPoses() { if (this._rp !== undefined) return this._rp; if (!/^https?:/.test(location.protocol) || location.hostname.endsWith('claude.ai') || location.hostname.endsWith('claudeusercontent.com')) return (this._rp = null); try { const r = await fetch('poses/poses.json', {cache: 'no-cache'}); this._rp = r.ok ? await r.json() : null; } catch { this._rp = null; } return this._rp; },
+  async chars() { const list = await this.chars0(); const rp = await this.repoPoses(); if (rp && rp.characters) rp.characters.forEach(e => { let c = list.find(x => x.id === e.id || (e.name && x.name.toLowerCase() === e.name.toLowerCase())); if (!c && e.character) { c = clone(e.character); list.push(c); } if (c && e.poses) { c.look = c.look || {}; c.look.poses = {...Object.fromEntries(Object.entries(e.poses).map(([k, v]) => [k, {src: v}])), ...(c.look.poses || {})}; } }); return list; },
+  async chars0() { const d = await Store.get('chars'); const saved = (d && d.list) || []; const base = A.defaultCharacters.map(c => ({...clone(c), ...(saved.find(s => s.id === c.id) || {})})); return base.concat(saved.filter(s => !A.defaultCharacters.some(c => c.id === s.id))); },
   async saveChars(list) { await Store.set('chars', {type: 'chars', list}); },
   async settings() { return {type: 'settings', duration: 30, format: 'vertical', music: {fin: 'upbeat', gym: 'motivacion'}, subs: true, progressBar: true, showHandle: true, quality: 'cloud', render3d: true, gymStyle: 'estudio3d', motion: 'alto', anim: {fin: '2d', gym: '3d'}, ...(await Store.get('settings') || {})}; },
   async brand(mod) { const b = await Store.get('brand') || {type: 'brand'}; return b[mod] || {}; },
@@ -214,7 +216,7 @@ pos: izq|centro|der${p.module === 'gym' ? '\nmovimiento (solo para nexo; deja ""
     const script = units.map(s => `[${s.part}${s.title ? ': ' + s.title : ''}${s.cont ? ' (continuación)' : ''}] (${s.speaker}) ${s.text}`).join('\n');
     const g3 = p.module === 'gym' && (App.state.gymStyle || 'estudio3d') === 'estudio3d';
     const r = await AI.json(`Convierte este guion en un storyboard de animación 2D para ${channelCtx(p.module)}
-${n > 1 ? `Es el BLOQUE ${k + 1} de ${n} de un video largo de ${fmtDur(p.duration)}: haz solo las escenas de este bloque (sin presentar de nuevo el video). Duración de este bloque ≈ ${Math.round(target)} s.` : `Duración total ≈ ${p.duration} s.`}${methodCtx(p)}
+${p.custom && (p.custom.img || p.custom.anim) ? `INDICACIONES DEL CREADOR (mandan sobre cualquier otra regla de estilo; respétalas en cada escena):\n${p.custom.img ? 'Imágenes / escenarios: ' + p.custom.img + '\n' : ''}${p.custom.anim ? 'Animaciones / ritmo / cámara: ' + p.custom.anim + '\n' : ''}` : ''}${n > 1 ? `Es el BLOQUE ${k + 1} de ${n} de un video largo de ${fmtDur(p.duration)}: haz solo las escenas de este bloque (sin presentar de nuevo el video). Duración de este bloque ≈ ${Math.round(target)} s.` : `Duración total ≈ ${p.duration} s.`}${methodCtx(p)}
 GUION:
 ${script}
 Valores permitidos (usa exactamente estos):
@@ -302,7 +304,8 @@ Formato: {"escenas":[{"parte":"","fondo":"","personajes":[{"id":"","pos":"izq","
       });
     }
     scenes.forEach(sc => delete sc.chapterTitle);
-    return {scenes: fitDurations(scenes, target), source: 'reglas'};
+    const out = {scenes: fitDurations(scenes, target), source: 'reglas'};
+    return App.applyCustomPrompts ? App.applyCustomPrompts(p, out) : out;
   },
   async qaReview(p) {
     return AI.json(`Revisa este guion de un video de ${channelCtx(p.module)}
@@ -475,7 +478,7 @@ App.productionView = async (main, mod) => {
   const settings = await Lib.settings(); const brand = await Lib.brand(mod);
   const animOf = () => p.anim || ((settings.anim || {})[mod]) || (mod === 'gym' ? (settings.gymStyle === 'plano' ? '2d' : '3d') : '2d');
   const styleOf = () => animOf() === '3d' ? (mod === 'gym' && settings.gymStyle === 'mixto' ? 'mixto' : 'estudio3d') : 'plano';
-  const look3d = () => ({render3d: animOf() === '3d', gymStyle: styleOf(), motion: settings.motion || 'alto'});
+  const look3d = () => ({render3d: animOf() === '3d', gymStyle: styleOf(), motion: p.motion || settings.motion || 'alto'});
   let p = await Projects.get(Projects.getCurrent(mod));
   if (!p || p.module !== mod) p = null;
   if (App.state.newProject && App.state.newProject.module === mod) { p = await Projects.create(mod, App.state.newProject.init); Projects.setCurrent(mod, p.id); App.state.newProject = null; }
@@ -912,6 +915,7 @@ App.productionView = async (main, mod) => {
 
   const renderStep = () => [stepIdea, stepProps, stepScript, stepStory, stepVoice, stepPreview, stepRender, stepThumb, stepQA, stepExport][p.step || 0]();
   renderSteps(); renderStep();
+  if (App.state.autoGen) { App.state.autoGen = false; setTimeout(() => { const g = $('#genAllBtn'); if (g) generateAll(g); }, 400); }
 };
 
 /* ============ Vistas compartidas: personajes, videos, miniaturas, guiones ============ */
