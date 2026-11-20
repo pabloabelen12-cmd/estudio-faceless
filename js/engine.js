@@ -28,7 +28,7 @@ Engine.build = (project, charLib, opts = {}) => {
   });
   const chars = {}; (charLib || []).forEach(c => chars[c.id] = c);
   return {W, H, vertical, scenes, duration: t, chars, brand: project.brand || {}, music: project.music || 'upbeat', module: project.module || 'fin',
-    subs: project.subs !== false, render3d: project.render3d !== false && project.gymStyle !== 'plano', gymStyle: project.gymStyle || 'estudio3d', captionStyle: project.module === 'gym' && (project.gymStyle || 'estudio3d') === 'estudio3d' ? 'clean' : 'box', progress: project.progressBar !== false, handle: project.handle || '', accent: project.module === 'gym' ? '#ff7a45' : '#2ee59d'};
+    motion: project.motion || 'alto', subs: project.subs !== false, render3d: project.render3d !== false && project.gymStyle !== 'plano', gymStyle: project.gymStyle || 'estudio3d', captionStyle: project.module === 'gym' && (project.gymStyle || 'estudio3d') === 'estudio3d' ? 'clean' : 'box', progress: project.progressBar !== false, handle: project.handle || '', accent: project.module === 'gym' ? '#ff7a45' : '#2ee59d'};
 };
 function wordTimes(text, a, b) {
   const words = String(text).trim().split(/\s+/).filter(Boolean); if (!words.length) return [];
@@ -66,7 +66,9 @@ function drawScene(ctx, tl, sc, time, prevIds) {
   const lt = time - sc.start, u = Math.max(0, Math.min(1, lt / sc.dur));
   const list = (sc.chars || []).filter(c => tl.chars[c.id]);
   const n = list.length;
-  const xs = list.map((c, i) => { const p = c.pos; if (typeof p === 'number') return p; if (Lo.pos[p] != null) return Lo.pos[p]; return n === 1 ? Lo.pos.centro : n === 2 ? (i ? Lo.pos.der : Lo.pos.izq) : [Lo.pos.izq, Lo.pos.centro, Lo.pos.der][i] ?? .5; });
+  const ovSide = sc.overlay && sc.overlay.type && !tl.vertical;
+  const xs0 = list.map((c, i) => { const p = c.pos; if (typeof p === 'number') return p; if (Lo.pos[p] != null) return Lo.pos[p]; return n === 1 ? Lo.pos.centro : n === 2 ? (i ? Lo.pos.der : Lo.pos.izq) : [Lo.pos.izq, Lo.pos.centro, Lo.pos.der][i] ?? .5; });
+  const xs = ovSide ? xs0.map(x => .6 + x * .32) : xs0;
   const gymMove = list.some(c => c.move && A.MOVES[c.move]);
   const speakerIdx = list.findIndex(c => c.id === sc.speaker);
   const speakerX = speakerIdx >= 0 ? xs[speakerIdx] * W : null;
@@ -74,8 +76,8 @@ function drawScene(ctx, tl, sc, time, prevIds) {
   ctx.save();
   ctx.translate(cam.cx + cam.tx, cam.cy + cam.ty); ctx.scale(cam.s, cam.s); ctx.translate(-cam.cx, -cam.cy);
   const A3 = App.Art3D;
-  const demo3d = tl.module === 'gym' && tl.render3d && A3 && n === 1 && list[0].move && A.MOVES[list[0].move] && A3.supports(tl.chars[list[0].id]);
-  const talk3d = !demo3d && tl.module === 'gym' && tl.render3d && tl.gymStyle === 'estudio3d' && A3 && n >= 1 && n <= 2 && list.every(c => !c.move && A3.supports(tl.chars[c.id], 'talk'));
+  const demo3d = tl.render3d && A3 && n === 1 && list[0].move && A.MOVES[list[0].move] && A3.supports(tl.chars[list[0].id]);
+  const talk3d = !demo3d && tl.render3d && tl.gymStyle === 'estudio3d' && A3 && n >= 1 && n <= 2 && list.every(c => !c.move && A3.supports(tl.chars[c.id], 'talk'));
   const use3d = demo3d || talk3d;
   if (use3d) {
     const ov = sc.overlay && sc.overlay.type, c0 = list[0], c1 = list[1];
@@ -89,7 +91,7 @@ function drawScene(ctx, tl, sc, time, prevIds) {
   const loco = list.map(c => c.move && A.MOVES[c.move] && A.MOVES[c.move].loco).find(Boolean);
   if (loco && !use3d) A.groundMotion(ctx, W, H, Lo.gy, time, loco);
   // objetos (detrás de personajes en horizontal, arriba en vertical)
-  const objs = (sc.objects || []).filter(k => A.OBJ[k]).slice(0, 3);
+  const objs = sc.overlay && sc.overlay.type ? [] : (sc.objects || []).filter(k => A.OBJ[k]).slice(0, 3);
   objs.forEach((k, i) => {
     const delay = .35 + i * .3; const ot = lt - delay; if (ot < 0) return;
     const cnt = objs.length; const ox = tl.vertical ? (cnt === 1 ? W * .5 : cnt === 2 ? [W * .3, W * .7][i] : Lo.objX[i]) : (cnt === 1 ? W * .78 : Lo.objX[i]);
@@ -264,6 +266,7 @@ Engine.drawFrame = (ctx, tl, time) => {
     ctx.restore();
     if (sc.transition === 'wipe') { ctx.fillStyle = tl.accent; ctx.fillRect(W * k - W * .012, 0, W * .012, H); }
   } else drawScene(ctx, tl, sc, time, prevIds);
+  drawMotion(ctx, tl, sc, time);
   drawOverlay(ctx, tl, sc, time);
   drawEmojis(ctx, tl, sc, time);
   drawCaption(ctx, tl, sc, time);
@@ -272,6 +275,43 @@ Engine.drawFrame = (ctx, tl, time) => {
   if (tl.handle) { ctx.font = `700 ${Math.round(Math.min(W, H) * .028)}px "Inter Tight", sans-serif`; ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.textAlign = 'right'; ctx.textBaseline = 'top'; ctx.fillText(tl.handle, W - W * .04, H * .02); }
   ctx.restore();
 };
+
+
+/* ---------- capa de motion: íconos que entran, flotan y salen al ritmo de cada escena ---------- */
+const ICON_KEYS = [[/ahorr|alcanc/i, 'piggy'], [/tarjeta|deuda|crédito|credito|préstamo|prestamo/i, 'card'], [/invers|crec|gananc|sub[ei]|aument/i, 'chart_up'], [/perd|riesgo|ca[eí]|baj[aóo]|crisis/i, 'chart_down'], [/compr|carrito|gast|tienda/i, 'cart'], [/envío|envio|paquete|producto|pedido/i, 'box'], [/celular|app|redes|tiktok|instagram|youtube|internet/i, 'phone'], [/idea|aprend|entend|clave/i, 'lightbulb'], [/meta|objetivo|plan/i, 'target'], [/tiempo|mes|año|semana|día|dia|hora/i, 'alarm'], [/interés|interes|porcentaje|%/i, 'percent'], [/banco|cuenta/i, 'bank'], [/dinero|pesos|sueldo|salario|ingreso|pago|cobr/i, 'coins'], [/billete|efectivo|rico|riqueza|millon/i, 'bills'], [/presupuesto|calcul|sumar|cuentas/i, 'calculator'], [/error|cuidado|ojo|evita|peligro|nunca/i, 'warning'], [/músculo|musculo|hipertrofia|fuerza|pesa|levant/i, 'muscle'], [/cardio|corazón|corazon|resistencia|correr/i, 'heart'], [/estudio|evidencia|ciencia|investig/i, 'book'], [/casa|hogar|renta|alquiler/i, 'house'], [/bien|correcto|logr|éxito|exito/i, 'check'], [/mal|incorrecto|no funciona/i, 'cross'], [/negocio|emprend|vender|venta|cliente/i, 'store'], [/cartera|billetera/i, 'wallet'], [/pesa|mancuerna|gimnasio|gym|entren/i, 'dumbbell']];
+Engine.iconsFor = text => { const out = []; ICON_KEYS.forEach(([re, k]) => { if (A.OBJ[k] && re.test(text || '') && !out.includes(k)) out.push(k); }); return out; };
+function drawMotion(ctx, tl, sc, time) {
+  if (tl.motion === 'off') return;
+  const lt = time - sc.start; if (lt < 0) return;
+  const {W, H} = tl, u = Math.min(W, H);
+  const icons = (sc._icons = sc._icons || [...new Set([...(sc.objects || []), ...Engine.iconsFor(sc.dialogue + ' ' + (sc.text || ''))])].filter(k => A.OBJ[k]));
+  const n = tl.motion === 'medio' ? 3 : 6, pool = icons.length ? icons : ['lightbulb', 'check', 'target'];
+  // zonas laterales y superiores, sin tapar la cara del personaje ni los subtítulos
+  const slots = tl.vertical ? [[.12, .13], [.86, .16], [.1, .52], [.9, .5], [.18, .66], [.82, .68]] : [[.07, .16], [.93, .18], [.06, .7], [.94, .66], [.2, .1], [.8, .1]];
+  const seed = sc.i * 7.13;
+  for (let j = 0; j < n; j++) {
+    const k = pool[(j + sc.i) % pool.length], [sx, sy] = slots[j];
+    const t0 = .15 + j * Math.min(.45, sc.dur / (n + 2)), age = lt - t0; if (age < 0) continue;
+    const out = sc.dur - lt; const a = Math.min(1, age / .25) * Math.min(1, Math.max(0, out / .3));
+    if (a <= 0) continue;
+    const pop = age < .35 ? 1 + .35 * Math.sin(age / .35 * Math.PI) : 1;
+    const x = W * sx + Math.sin(time * .9 + seed + j) * u * .018, y = H * sy + Math.cos(time * 1.1 + seed + j * 2) * u * .016;
+    const size = u * (tl.vertical ? .085 : .075) * (j < 2 ? 1.15 : .9) * pop;
+    ctx.save(); ctx.globalAlpha = a * .92;
+    // halo de color detrás del ícono
+    ctx.fillStyle = tl.accent; ctx.globalAlpha = a * .18; ctx.beginPath(); ctx.arc(x, y, size * .62, 0, 7); ctx.fill(); ctx.globalAlpha = a * .92;
+    ctx.translate(x, y); ctx.rotate(Math.sin(time * 1.4 + j) * .12); A.drawObject(ctx, k, 0, 0, size, age); ctx.restore();
+  }
+  // destellos y formas de acento (movimiento constante pero suave)
+  const m = tl.motion === 'medio' ? 4 : 9;
+  for (let j = 0; j < m; j++) {
+    const ph = (lt * .35 + j / m + sc.i * .17) % 1, x = W * ((j * .37 + sc.i * .11) % 1), y = H * (.08 + ((j * .53) % .55)) - ph * H * .06;
+    ctx.save(); ctx.globalAlpha = Math.sin(ph * Math.PI) * .5; ctx.strokeStyle = j % 3 ? tl.accent : '#ffffff'; ctx.lineWidth = u * .004; const r = u * (.006 + (j % 3) * .004);
+    if (j % 3 === 0) { ctx.beginPath(); ctx.moveTo(x - r * 2, y); ctx.lineTo(x + r * 2, y); ctx.moveTo(x, y - r * 2); ctx.lineTo(x, y + r * 2); ctx.stroke(); }
+    else { ctx.beginPath(); ctx.arc(x, y, r * 1.6, 0, 7); ctx.stroke(); }
+    ctx.restore();
+  }
+}
 
 /* ---------- audio: música original sintetizada + efectos ---------- */
 Engine.newAudioContext = () => { const AC = window.AudioContext || window.webkitAudioContext; return AC ? new AC() : null; };

@@ -212,6 +212,7 @@ function glow(ctx, a, b, w, alpha) {
 /* ---------- personajes hechos con una imagen subida por el usuario ---------- */
 const IMG = new Map();
 Art.imageSrc = lk => (lk && lk.style === 'image' && lk.img && lk.img.src) || null;
+Art.poseSrc = (lk, act) => (lk && lk.poses && act && lk.poses[act] && lk.poses[act].src) || null;
 Art.isImage = ch => !!(ch && ch.look && ch.look.style === 'image');
 Art.loadImage = src => {
   if (!src) return Promise.resolve(null);
@@ -219,14 +220,16 @@ Art.loadImage = src => {
   if (!e) { e = {img: new Image(), ok: false}; e.p = new Promise(res => { e.img.onload = () => { e.ok = true; res(e.img); }; e.img.onerror = () => { e.bad = true; res(null); }; }); e.img.src = src; IMG.set(src, e); }
   return e.p;
 };
-Art.preload = chars => Promise.all((chars || []).map(c => Art.loadImage(Art.imageSrc(c && c.look))));
+Art.preload = chars => Promise.all((chars || []).flatMap(c => [Art.loadImage(Art.imageSrc(c && c.look)), ...Object.values((c && c.look && c.look.poses) || {}).map(p => Art.loadImage(p.src))]));
 /* "doble" anatómico con los colores de la imagen: hace las demostraciones de ejercicio que una imagen plana no puede hacer */
 Art.bodyDouble = ch => { const lk = ch.look || {}; return {...ch, look: {body: lk.body === 'f' ? 'f' : 'm', skin: lk.skin || '#c48a64', hair: lk.hair || 'short', hairColor: lk.hairColor || '#222222', top: 'tank', topColor: lk.topColor || '#3a7bd5', pants: lk.pants || '#22262e', shoes: lk.shoes || '#eeeeee', acc: 'none', build: lk.build || 1}}; };
 const EXPR_MARK = {surprised: '❗', worried: '💧', thinking: '💭', excited: '✨', angry: '💢', sad: '💧', confident: '👍'};
 function drawImageChar(ctx, ch, st) {
-  const lk = ch.look, src = Art.imageSrc(lk), e = src && IMG.get(src);
+  const lk = ch.look, pose = Art.poseSrc(lk, st.act), src = pose || Art.imageSrc(lk), e = src && IMG.get(src);
   if (!e) Art.loadImage(src);
-  const t = st.t || 0, seed = st.seed || 0, talk = st.talk || 0, act = st.exercise ? 'exercise' : (st.act || 'idle');
+  const t = st.t || 0, seed = st.seed || 0, talk = st.talk || 0, act = st.exercise && !pose ? 'exercise' : (st.act || 'idle'), mv = st.act || '';
+  const EX = /squat|goblet|lunge|backsquat|boxjump/.test(mv) ? 'squat' : /press|clean|slam|handstand/.test(mv) ? 'press' : /curl|row|carry|kbswing|clubs|ropes|sandbag|stone|flywheel/.test(mv) ? 'curl' : /deadlift/.test(mv) ? 'hinge' : /pushup|plank|bench|crawl|nordic|dip/.test(mv) ? 'floor' : /sprint|jog|sled|walk/.test(mv) ? 'run' : /pullup|hang|climb/.test(mv) ? 'hang' : /jump/.test(mv) ? 'jump' : 'bounce';
+  let rep = 0;
   let dx = 0, dy = 0, rot = 0, sx = 1 - .006 * Math.sin(t * 2.2 + seed), sy = 1 + .012 * Math.sin(t * 2.2 + seed);
   sy += .05 * talk; sx -= .028 * talk; rot += .025 * talk * Math.sin(t * 3 + seed);
   if (act === 'walk') { dy = -Math.abs(Math.sin(t * 8)) * 14; rot += .05 * Math.sin(t * 8); }
@@ -236,7 +239,17 @@ function drawImageChar(ctx, ch, st) {
   else if (act === 'think') rot += -.06 + .02 * Math.sin(t * 1.5);
   else if (act === 'point' || act === 'present' || act === 'count') rot += .05 + .03 * Math.sin(t * 1.8);
   else if (act === 'facepalm') { rot -= .08; sy -= .03; }
-  else if (act === 'exercise') dy = -Math.abs(Math.sin(t * 3)) * 18;
+  else if (act === 'exercise') {
+    rep = (1 - Math.cos(t * 2.6)) / 2; // 0 → 1 → 0 en cada repetición
+    if (EX === 'squat') { sy -= rep * .22; sx += rep * .06; }
+    else if (EX === 'hinge') { rot += rep * .5; sy -= rep * .05; }
+    else if (EX === 'floor') { rot = -1.35; dy = -18 - rep * 22; dx = 60; }
+    else if (EX === 'run') { dy = -Math.abs(Math.sin(t * 9)) * 16; rot += .12; }
+    else if (EX === 'hang') { dy = -40 - rep * 45; }
+    else if (EX === 'jump') { dy = -Math.max(0, Math.sin(t * 3.2)) * 70; sy += Math.sin(t * 3.2) < 0 ? -.06 : .03; }
+    else if (EX === 'press' || EX === 'curl') sy -= rep * .03;
+    else dy = -Math.abs(Math.sin(t * 3)) * 18;
+  }
   ctx.save();
   ctx.translate(st.x + dx * st.scale, st.y + dy * st.scale);
   const facing = st.facing || 1, faces = (lk.img && lk.img.faces) || 'front';
@@ -249,6 +262,17 @@ function drawImageChar(ctx, ch, st) {
   if (e && e.ok) {
     const im = e.img; let h = Hh, w = im.naturalWidth / im.naturalHeight * h; if (w > 340) { h *= 340 / w; w = 340; }
     ctx.drawImage(im, -w / 2, -h, w, h);
+    if (act === 'exercise') { // implementos dibujados sobre la imagen: barra, mancuernas, barra fija y líneas de velocidad
+      const dark = '#d5dbe2', plate = '#e0533d';
+      const bar = (y, half) => { ctx.fillStyle = '#20252b'; ctx.fillRect(-half - 2, y - 6, half * 2 + 4, 12); ctx.fillStyle = dark; ctx.fillRect(-half, y - 4, half * 2, 8); [-1, 1].forEach(s => { ctx.fillStyle = plate; rr(ctx, s * half - (s > 0 ? 0 : 18), y - 34, 18, 68, 5); ctx.fill(); }); };
+      const db = (x, y) => { ctx.fillStyle = dark; ctx.fillRect(x - 16, y - 3, 32, 6); ctx.fillStyle = plate; rr(ctx, x - 22, y - 12, 9, 24, 3); ctx.fill(); rr(ctx, x + 13, y - 12, 9, 24, 3); ctx.fill(); };
+      if (EX === 'squat') bar(-h * .78, w * .75);
+      else if (EX === 'press') bar(-h * (.78 + rep * .32), w * .7);
+      else if (EX === 'hinge') bar(-h * .42, w * .7);
+      else if (EX === 'curl') { db(-w * .46, -h * (.42 + rep * .2)); db(w * .46, -h * (.42 + rep * .2)); }
+      else if (EX === 'hang') { ctx.fillStyle = dark; ctx.fillRect(-w * .8, -h * 1.02, w * 1.6, 9); }
+      else if (EX === 'run') { ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 6; ctx.lineCap = 'round'; for (let i = 0; i < 4; i++) { const yy = -h * (.25 + i * .17), o = ((t * 3 + i * .3) % 1) * 40; ctx.beginPath(); ctx.moveTo(-w * .6 - o, yy); ctx.lineTo(-w * .6 - o - 70, yy); ctx.stroke(); } }
+    }
     const mark = EXPR_MARK[st.expr]; if (mark) { ctx.save(); ctx.scale(flip, 1); ctx.font = '44px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.globalAlpha *= .5 + .5 * Math.abs(Math.sin(t * 2)); ctx.fillText(mark, w * .42, -h * .96); ctx.restore(); }
   } else {
     ctx.fillStyle = 'rgba(128,128,128,.35)'; rr(ctx, -55, -Hh, 110, Hh, 40); ctx.fill();
@@ -259,7 +283,7 @@ function drawImageChar(ctx, ch, st) {
 }
 
 Art.drawCharacter = (ctx, ch, st) => {
-  if (Art.isImage(ch)) return st.exercise ? Art.drawCharacter(ctx, Art.bodyDouble(ch), st) : drawImageChar(ctx, ch, st);
+  if (Art.isImage(ch)) return st.exercise && st.double ? Art.drawCharacter(ctx, Art.bodyDouble(ch), st) : drawImageChar(ctx, ch, st);
   const lk = {build: 1, ...ch.look};
   const {pose} = st; const ex = Art.EXPR[st.expr] || Art.EXPR.neutral;
   ctx.save();
@@ -628,6 +652,28 @@ BG.habitacion = (c, W, H, gy, t) => { c.fillStyle = '#c9b6a6'; c.fillRect(-W, -H
 BG.gym_oscuro = (c, W, H, gy, t) => { const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#1d2228'); g.addColorStop(1, '#0b0e11'); c.fillStyle = g; c.fillRect(-W, -H, W * 3, H * 3); c.fillStyle = 'rgba(235,240,245,.85)'; for (let i = 0; i < 3; i++) rr(c, W * (.13 + i * .3), H * .015, W * .14, H * .008, 4), c.fill(); c.fillStyle = '#0d1013'; c.fillRect(W * .02, gy - H * .5, W * .03, H * .5); c.fillRect(W * .16, gy - H * .5, W * .03, H * .5); c.fillRect(W * .8, gy - H * .34, W * .18, H * .02); floor(c, W, H, gy, '#0e1114', '#1b2026'); };
 BG.plano_azul = (c, W, H, gy, t) => { const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#dcecf8'); g.addColorStop(1, '#bcd6ea'); c.fillStyle = g; c.fillRect(-W, -H, W * 3, H * 3); grid(c, W, H, gy, W * .06, 'rgba(255,255,255,.7)'); };
 BG.rayos = (c, W, H, gy, t) => { c.fillStyle = '#f7f7f8'; c.fillRect(-W, -H, W * 3, H * 3); c.save(); c.translate(W * .6, H * .4); c.fillStyle = 'rgba(0,0,0,.035)'; for (let i = 0; i < 16; i++) { c.rotate(Math.PI / 8); c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.max(W, H) * 1.3, -Math.max(W, H) * .09); c.lineTo(Math.max(W, H) * 1.3, Math.max(W, H) * .09); c.closePath(); c.fill(); } c.restore(); c.fillStyle = 'rgba(0,0,0,.04)'; c.fillRect(-W, gy, W * 3, H); };
+/* casa humilde (falta de dinero) y mansión (riqueza): el guion elige el escenario */
+BG.casa_humilde = (c, W, H, gy, t) => {
+  c.fillStyle = '#6d6a5e'; c.fillRect(-W, -H, W * 3, H * 3);
+  c.fillStyle = 'rgba(0,0,0,.12)'; for (let i = 0; i < 9; i++) { c.fillRect(-W * .2 + i * W * .17, H * (.08 + (i % 3) * .07), W * .09, H * .05); }
+  c.strokeStyle = 'rgba(40,35,30,.55)'; c.lineWidth = W * .004; c.beginPath(); c.moveTo(W * .3, H * .05); c.lineTo(W * .33, H * .14); c.lineTo(W * .31, H * .2); c.lineTo(W * .35, H * .3); c.stroke();
+  c.fillStyle = '#2b2a27'; c.fillRect(W * .5 - 1, 0, 2, H * .1); const fl = .85 + .15 * Math.sin(t * 9) * Math.sin(t * 3.3); c.fillStyle = `rgba(255,236,170,${.9 * fl})`; c.beginPath(); c.arc(W * .5, H * .11, W * .018, 0, 7); c.fill(); c.fillStyle = `rgba(255,236,170,${.08 * fl})`; c.beginPath(); c.arc(W * .5, H * .11, W * .25, 0, 7); c.fill();
+  c.fillStyle = '#4c5a6a'; rr(c, W * .64, H * .16, W * .22, H * .17, 4); c.fill(); c.fillStyle = '#9fb3c6'; c.fillRect(W * .66, H * .18, W * .18, H * .13); c.fillStyle = '#6d6a5e'; c.fillRect(W * .748, H * .18, W * .006, H * .13); c.fillRect(W * .66, H * .243, W * .18, H * .006);
+  floor(c, W, H, gy, '#8a7f6d', '#7a705f');
+  c.fillStyle = '#6b5a4a'; rr(c, -W * .05, gy - H * .085, W * .36, H * .085, 10); c.fill(); c.fillStyle = '#b07d4f'; rr(c, W * .06, gy - H * .07, W * .08, H * .04, 4); c.fill();
+  c.fillStyle = '#3a3a3a'; rr(c, W * .72, gy - H * .11, W * .14, H * .09, 4); c.fill(); c.fillStyle = '#6f8a8a'; c.fillRect(W * .735, gy - H * .1, W * .11, H * .06); c.fillStyle = '#5c4a39'; c.fillRect(W * .7, gy - H * .02, W * .18, H * .02);
+  c.fillStyle = '#4b86b5'; c.beginPath(); c.moveTo(W * .9, gy); c.lineTo(W * .92, gy - H * .05); c.lineTo(W * .99, gy - H * .05); c.lineTo(W * 1.01, gy); c.fill();
+};
+BG.mansion = (c, W, H, gy, t) => {
+  const g = c.createLinearGradient(0, 0, 0, gy); g.addColorStop(0, '#f6efe2'); g.addColorStop(1, '#e8dcc4'); c.fillStyle = g; c.fillRect(-W, -H, W * 3, H * 3);
+  for (let i = 0; i < 3; i++) { const x = W * (.06 + i * .22); const sky = c.createLinearGradient(0, H * .12, 0, H * .52); sky.addColorStop(0, '#7cc4f5'); sky.addColorStop(1, '#cdeeff'); c.fillStyle = '#c9a75a'; c.fillRect(x - W * .008, H * .1, W * .176, H * .44); c.fillStyle = sky; c.fillRect(x, H * .115, W * .16, H * .41); c.fillStyle = '#5cb4e6'; c.fillRect(x, H * .44, W * .16, H * .085); c.fillStyle = 'rgba(255,255,255,.5)'; c.fillRect(x + W * .02 + Math.sin(t + i) * W * .01, H * .46, W * .05, H * .006); }
+  c.fillStyle = '#c9a75a'; c.fillRect(W * .5, H * .0, W * .004, H * .07); c.save(); c.translate(W * .78, H * .1); c.rotate(Math.sin(t * .8) * .02); c.fillStyle = '#e8c56b'; c.beginPath(); c.ellipse(0, 0, W * .08, H * .025, 0, 0, 7); c.fill(); for (let i = -3; i <= 3; i++) { c.fillStyle = `rgba(255,255,255,${.6 + .4 * Math.sin(t * 4 + i)})`; c.beginPath(); c.arc(i * W * .022, H * .035, W * .007, 0, 7); c.fill(); } c.restore();
+  c.fillStyle = '#c9a75a'; rr(c, W * .74, H * .2, W * .2, H * .15, 4); c.fill(); c.fillStyle = '#3d5a80'; c.fillRect(W * .755, H * .215, W * .17, H * .12); c.fillStyle = '#e09f3e'; c.beginPath(); c.arc(W * .84, H * .27, W * .03, 0, 7); c.fill();
+  const fg = c.createLinearGradient(0, gy, 0, H); fg.addColorStop(0, '#f2ede6'); fg.addColorStop(1, '#d9d0c4'); c.fillStyle = fg; c.fillRect(-W, gy, W * 3, H); c.strokeStyle = 'rgba(160,140,110,.25)'; c.lineWidth = 1; for (let x = -W; x < W * 2; x += W * .12) { c.beginPath(); c.moveTo(x, gy); c.lineTo(x - W * .2, H); c.stroke(); }
+  c.fillStyle = '#f4f0ea'; rr(c, -W * .05, gy - H * .11, W * .46, H * .11, 22); c.fill(); c.fillStyle = '#e6dfd4'; rr(c, -W * .05, gy - H * .155, W * .44, H * .06, 18); c.fill(); c.fillStyle = '#c9a75a'; rr(c, W * .05, gy - H * .12, W * .07, H * .05, 8); c.fill();
+  c.fillStyle = '#2d6a4f'; c.beginPath(); c.ellipse(W * .95, gy - H * .1, W * .05, H * .07, 0, 0, 7); c.fill(); c.fillStyle = '#c9a75a'; rr(c, W * .92, gy - H * .045, W * .06, H * .045, 4); c.fill();
+};
+Object.assign(BG_LABEL, {casa_humilde: 'Casa humilde (poco dinero)', mansion: 'Mansión (riqueza)'});
 Art.bgKeys = Object.keys(BG);
 /* textura de suelo en movimiento para locomoción */
 Art.groundMotion = (c, W, H, gy, t, speed) => { if (!speed) return; c.save(); c.globalAlpha = .25; c.fillStyle = '#fff'; const sp = speed * W * .02; for (let x = -((t * sp) % (W * .16)); x < W * 1.2; x += W * .16) c.fillRect(x, gy + H * .015, W * .06, Math.max(2, H * .004)); c.restore(); };

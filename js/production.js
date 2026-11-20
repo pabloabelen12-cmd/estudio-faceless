@@ -9,7 +9,7 @@ const E = App.Engine, A = App.Art;
 const Lib = App.Lib = {
   async chars() { const d = await Store.get('chars'); const saved = (d && d.list) || []; const base = A.defaultCharacters.map(c => ({...clone(c), ...(saved.find(s => s.id === c.id) || {})})); return base.concat(saved.filter(s => !A.defaultCharacters.some(c => c.id === s.id))); },
   async saveChars(list) { await Store.set('chars', {type: 'chars', list}); },
-  async settings() { return {type: 'settings', duration: 30, format: 'vertical', music: {fin: 'upbeat', gym: 'motivacion'}, subs: true, progressBar: true, showHandle: true, quality: 'cloud', render3d: true, gymStyle: 'estudio3d', ...(await Store.get('settings') || {})}; },
+  async settings() { return {type: 'settings', duration: 30, format: 'vertical', music: {fin: 'upbeat', gym: 'motivacion'}, subs: true, progressBar: true, showHandle: true, quality: 'cloud', render3d: true, gymStyle: 'estudio3d', motion: 'alto', anim: {fin: '2d', gym: '3d'}, ...(await Store.get('settings') || {})}; },
   async brand(mod) { const b = await Store.get('brand') || {type: 'brand'}; return b[mod] || {}; },
   async saveBrand(mod, data) { const b = await Store.get('brand') || {type: 'brand'}; b[mod] = data; await Store.set('brand', b); }
 };
@@ -220,8 +220,8 @@ ${script}
 Valores permitidos (usa exactamente estos):
 ${allowed}
 Personajes: ${chars.map(c => c.id).join(', ')}
-Reglas: una escena por cada 8 a 15 palabras de diálogo; cada escena de 2 a 6 s; cambia de fondo o de cámara con frecuencia (nada estático); máximo 2 personajes por escena; máximo 3 objetos; texto_pantalla de máximo 5 palabras; el diálogo de cada escena es un fragmento LITERAL y consecutivo del guion (no inventes texto nuevo) y entre todas cubren el guion completo de este bloque; en "parte" copia la etiqueta entre corchetes sin el título (gancho, problema, explicacion, ejemplo, capitulo, conclusion o cta). ${g3 ? GYM3D_RULES + ' Usa el personaje del reparto (' + (p.cast || ['volt']).join(', ') + ').' : p.module === 'gym' ? 'Hay dos tipos de escena: (1) el personaje HABLA A CÁMARA (sin \"movimiento\", un solo personaje): se anima en 2D en plano medio; úsalas para gancho, problema, conclusión y llamada a la acción; (2) DEMOSTRACIÓN del ejercicio (un solo personaje con \"movimiento\" y hablante \"narrador\" o el mismo personaje en off): se renderiza en 3D; úsalas para explicación, ejemplo y capítulos. Alterna ambos tipos. Activa \"musculos\": true en las demostraciones que expliquen qué músculo trabaja. Usa el personaje del reparto (' + (p.cast || ['nexo']).join(', ') + ').' : 'Usa expresiones y acciones que acompañen lo que se dice.'}
-Formato: {"escenas":[{"parte":"","fondo":"","personajes":[{"id":"","pos":"izq","accion":"talk","expresion":"happy","movimiento":""}],"hablante":"id o narrador","dialogo":"","texto_pantalla":"","objetos":[],"camara":"","transicion":"","duracion_seg":3${p.module === 'gym' ? ',"musculos":false' : ''}${g3 ? ',"vista":"frente","overlay":{"type":"","title":"","items":[{"emoji":"","text":"","tier":"","ok":true,"value":0}]},"emojis":[],"zona":[]' : ''}}]}${g3 ? '  (en "personajes" puedes añadir "variante" y "color")' : ''}`, {label: n > 1 ? `Storyboard: bloque ${k + 1} de ${n}` : 'Storyboard'});
+Reglas: una escena por cada 8 a 15 palabras de diálogo; cada escena de 2 a 6 s; cambia de fondo o de cámara con frecuencia (nada estático); máximo 2 personajes por escena; máximo 3 objetos; texto_pantalla de máximo 5 palabras; el diálogo de cada escena es un fragmento LITERAL y consecutivo del guion (no inventes texto nuevo) y entre todas cubren el guion completo de este bloque; en "parte" copia la etiqueta entre corchetes sin el título (gancho, problema, explicacion, ejemplo, capitulo, conclusion o cta). ${g3 ? GYM3D_RULES + ' Usa el personaje del reparto (' + (p.cast || ['volt']).join(', ') + ').' : p.module === 'gym' ? 'Hay dos tipos de escena: (1) el personaje HABLA A CÁMARA (sin \"movimiento\", un solo personaje): se anima en 2D en plano medio; úsalas para gancho, problema, conclusión y llamada a la acción; (2) DEMOSTRACIÓN del ejercicio (un solo personaje con \"movimiento\" y hablante \"narrador\" o el mismo personaje en off): se renderiza en 3D; úsalas para explicación, ejemplo y capítulos. Alterna ambos tipos. Activa \"musculos\": true en las demostraciones que expliquen qué músculo trabaja. Usa el personaje del reparto (' + (p.cast || ['nexo']).join(', ') + ').' : 'Usa expresiones y acciones que acompañen lo que se dice.'} El FONDO siempre ilustra lo que se narra: pobreza o falta de dinero → casa_humilde; riqueza, lujo o libertad financiera → mansion; préstamos o cuentas → banco; compras → tienda; negocio o clientes → negocio; inversiones → ciudad. Todo lo que se mencione se muestra con objetos y, cuando se enumeren cosas, se comparen opciones o se den números de ejemplo, añade un "overlay" (checklist, board, pie, versus, tier o error) con datos del guion, sin inventar cifras.
+Formato: {"escenas":[{"parte":"","fondo":"","personajes":[{"id":"","pos":"izq","accion":"talk","expresion":"happy","movimiento":""}],"hablante":"id o narrador","dialogo":"","texto_pantalla":"","objetos":[],"camara":"","transicion":"","duracion_seg":3${p.module === 'gym' ? ',"musculos":false' : ''}${g3 ? ',"vista":"frente","emojis":[],"zona":[]' : ''},"overlay":{"type":"","title":"","items":[{"emoji":"","text":"","tier":"","ok":true,"value":0}]}}]}${g3 ? '  (en "personajes" puedes añadir "variante" y "color")' : ''}`, {label: n > 1 ? `Storyboard: bloque ${k + 1} de ${n}` : 'Storyboard'});
     const sc = normalizeScenes(r.escenas || [], chars, p, target);
     if (!sc.length) throw Object.assign(new Error('Sin escenas'), {code: 'bad_json', userMsg: 'La IA no devolvió escenas.'});
     return sc;
@@ -246,7 +246,7 @@ Formato: {"escenas":[{"parte":"","fondo":"","personajes":[{"id":"","pos":"izq","
   },
   storyboardRules(p, chars, sections = p.script.sections, target = p.duration) {
     const ids = chars.map(c => c.id); const method = p.methodId && App.Gym && App.Gym.byId(p.methodId);
-    const BGK = [[/banco|préstamo|prestamo|crédito|credito/i, 'banco'], [/tienda|compr|super|gast/i, 'tienda'], [/negocio|emprend|vender|venta|cliente/i, 'negocio'], [/casa|hogar|familia|renta|alquiler/i, 'casa'], [/ciudad|calle|trabajo|empleo/i, 'calle'], [/invers|bolsa|trading|acciones|cripto/i, 'ciudad']];
+    const BGK = [[/pobre|pobreza|sin dinero|no (te |le |me |nos )?alcanza|no tiene[ns]? dinero|humilde|escasez|apenas|deudas? (que|y)|quiebra|bancarrota/i, 'casa_humilde'], [/\brico|riqueza|millonari|lujo|mansión|mansion|libertad financiera|patrimonio|adinerad|fortuna/i, 'mansion'], [/banco|préstamo|prestamo|crédito|credito/i, 'banco'], [/tienda|compr|super|gast/i, 'tienda'], [/negocio|emprend|vender|venta|cliente/i, 'negocio'], [/casa|hogar|familia|renta|alquiler/i, 'casa'], [/ciudad|calle|trabajo|empleo/i, 'calle'], [/invers|bolsa|trading|acciones|cripto/i, 'ciudad']];
     const OBK = [[/ahorr/i, 'piggy'], [/tarjeta|deuda|crédito|credito/i, 'card'], [/invers|crec|gananc|subir/i, 'chart_up'], [/perd|riesgo|caer|baj/i, 'chart_down'], [/compr|carrito|gast/i, 'cart'], [/envío|envio|dropshipping|paquete|producto/i, 'box'], [/celular|app|redes|tiktok|instagram|youtube/i, 'phone'], [/idea|aprend/i, 'lightbulb'], [/meta|objetivo/i, 'target'], [/tiempo|mes|año|ano|día|dia/i, 'alarm'], [/interés|interes|porcentaje|%/i, 'percent'], [/banco/i, 'bank'], [/dinero|pesos|sueldo|salario|ingreso/i, 'coins'], [/billete|efectivo/i, 'bills'], [/presupuesto|calcul|cuenta/i, 'calculator'], [/error|cuidado|ojo|evita/i, 'warning'], [/músculo|musculo|hipertrofia/i, 'muscle'], [/cardio|corazón|corazon|resistencia/i, 'heart'], [/estudio|evidencia|ciencia/i, 'book']];
     const CAM = {gancho: 'shake', problema: 'push_speaker', explicacion: 'pan_left', ejemplo: 'zoom_in', conclusion: 'zoom_out', cta: 'zoom_in'};
     const CAMS = ['pan_left', 'zoom_in', 'push_speaker', 'zoom_out', 'pan_right'];
@@ -267,7 +267,7 @@ Formato: {"escenas":[{"parte":"","fondo":"","personajes":[{"id":"","pos":"izq","
       if (!s.text.trim()) return;
       const pk = partKind(s.part), chap = s.part === 'capitulo';
       groupsOf(s.text).forEach((txt, j) => {
-        let bg = (BGK.find(([re]) => re.test(txt)) || [])[1] || (p.module === 'gym' ? ['gimnasio', 'pista', 'patio', 'parque'][(i + j) % 4] : ['oficina', 'estudio', 'casa', 'calle', 'negocio'][(i + j) % 5]);
+        let bg = (p.module === 'fin' || !/gimnasio|pesa|entren|ejercicio/i.test(txt) ? (BGK.find(([re]) => re.test(txt)) || [])[1] : '') || (p.module === 'gym' ? ['gimnasio', 'pista', 'patio', 'parque'][(i + j) % 4] : ['oficina', 'estudio', 'casa', 'calle', 'negocio'][(i + j) % 5]);
         if (bg === bgPrev && p.module !== 'gym') bg = ['estudio', 'oficina', 'calle'][(i + j) % 3]; bgPrev = bg;
         const objs = []; OBK.forEach(([re, k]) => { if (re.test(txt) && objs.length < 2 && !objs.includes(k)) objs.push(k); });
         const ex = chap ? EXPS[j % EXPS.length] : EXP[pk];
@@ -279,6 +279,14 @@ Formato: {"escenas":[{"parte":"","fondo":"","personajes":[{"id":"","pos":"izq","
         scenes.push({part: s.part, bg: p.module === 'gym' && method && method.bg && j === 0 && ['explicacion', 'ejemplo'].includes(pk) ? method.bg : bg, chars: cs, speaker: s.speaker, dialogue: txt.trim(), text: (pk === 'gancho' || j === 0) && !s.cont ? key : '', objects: objs, camera: chap || pk === 'explicacion' ? CAMS[(i + j) % CAMS.length] : (CAM[pk] || 'static'), transition: scenes.length ? TRS[scenes.length % TRS.length] : 'cut', dur: +E.estimateDur(txt).toFixed(1), highlight: p.module === 'gym' && (pk === 'explicacion' || /anat/i.test(p.formatHint || '')), chapterTitle: chap && j === 0 && !s.cont ? s.title || '' : undefined});
       });
     });
+    { const sentences = t => (t.match(/[^.!?;]+[.!?;]?/g) || []).map(x => x.replace(/[¿¡?!.;]/g, '').trim()).filter(Boolean);
+      if (!(p.module === 'gym' && (App.state.gymStyle || 'estudio3d') === 'estudio3d')) scenes.forEach(sc => {
+        if (sc.part === 'problema' && !sc.overlay) { const f = sentences(sc.dialogue)[0] || ''; if (f) sc.overlay = {type: 'error', title: 'ERROR', items: [{text: f.split(/\s+/).slice(0, 9).join(' ')}]}; }
+        if (sc.chapterTitle && !sc.overlay) sc.overlay = {type: 'board', title: sc.chapterTitle.slice(0, 40), items: sentences(sc.dialogue).slice(0, 2).map(x => ({text: x.split(/\s+/).slice(0, 6).join(' '), ok: true}))};
+        if (sc.part === 'conclusion' && !sc.overlay) { const its = sentences(sc.dialogue).slice(0, 3).map(x => ({text: x.split(/\s+/).slice(0, 6).join(' '), ok: true})); if (its.length) sc.overlay = {type: 'checklist', title: 'Resumen', items: its}; }
+        if (!sc.overlay && /\b(vs|versus|en vez de|o mejor)\b/i.test(sc.dialogue)) { const [a, b] = sc.dialogue.split(/\b(?:vs|versus|en vez de|o mejor)\b/i).map(x => x.replace(/[¿¡?!.,]/g, '').trim().split(/\s+/).slice(-3).join(' ')); if (a && b) sc.overlay = {type: 'versus', title: '', items: [{emoji: '', text: a}, {emoji: '', text: b}]}; }
+      });
+    }
     if (p.module === 'gym' && (App.state.gymStyle || 'estudio3d') === 'estudio3d') {
       const sentences = t => (t.match(/[^.!?;]+[.!?;]?/g) || []).map(x => x.replace(/[¿¡?!.;]/g, '').trim()).filter(Boolean);
       scenes.forEach((sc, i) => {
@@ -464,16 +472,20 @@ App.narrations = {};
 App.productionView = async (main, mod) => {
   const chars = (await Lib.chars()).filter(c => c.module === mod || (mod === 'fin' && c.module !== 'gym'));
   const allChars = await Lib.chars(); await A.preload(allChars);
-  const settings = await Lib.settings(); const brand = await Lib.brand(mod); App.state.gymStyle = settings.gymStyle || 'estudio3d';
+  const settings = await Lib.settings(); const brand = await Lib.brand(mod);
+  const animOf = () => p.anim || ((settings.anim || {})[mod]) || (mod === 'gym' ? (settings.gymStyle === 'plano' ? '2d' : '3d') : '2d');
+  const styleOf = () => animOf() === '3d' ? (mod === 'gym' && settings.gymStyle === 'mixto' ? 'mixto' : 'estudio3d') : 'plano';
+  const look3d = () => ({render3d: animOf() === '3d', gymStyle: styleOf(), motion: settings.motion || 'alto'});
   let p = await Projects.get(Projects.getCurrent(mod));
   if (!p || p.module !== mod) p = null;
   if (App.state.newProject && App.state.newProject.module === mod) { p = await Projects.create(mod, App.state.newProject.init); Projects.setCurrent(mod, p.id); App.state.newProject = null; }
   if (!p) { const blank = (await Projects.list(mod)).find(x => !x.idea && !x.proposals); p = blank || await Projects.create(mod); Projects.setCurrent(mod, p.id); }
   if (App.state.jumpStep != null) { p.step = App.state.jumpStep; App.state.jumpStep = null; }
+  App.state.gymStyle = styleOf();
   let player = null;
   const save = () => Projects.save(p);
   const projects = await Projects.list(mod);
-  const tlOf = (o = {}) => { const tl = E.build({...p, brand, handle: settings.showHandle ? (brand.handle || '') : '', subs: settings.subs, progressBar: settings.progressBar, render3d: settings.gymStyle !== 'plano', gymStyle: settings.gymStyle || 'estudio3d'}, allChars, o); return tl; };
+  const tlOf = (o = {}) => { const tl = E.build({...p, brand, handle: settings.showHandle ? (brand.handle || '') : '', subs: settings.subs, progressBar: settings.progressBar, ...look3d()}, allChars, o); return tl; };
   const done = i => [!!p.idea, p.selected != null, !!p.script, !!(p.storyboard && p.storyboard.scenes.length && !p.storyboard.partial), !!p.voiceChecked, !!p.previewed, !!p.render, !!p.thumb, !!(p.qa && p.qa.approved), !!(p.exported)][i];
 
   main.innerHTML = App.head(mod === 'fin' ? 'Finanzas · Producción' : 'Gym · Producción', p.title || (mod === 'fin' ? 'Nuevo video financiero' : 'Nuevo video de entrenamiento'),
@@ -506,6 +518,7 @@ App.productionView = async (main, mod) => {
         <div class="chips" id="durs">${DUR_PRESETS.map(d => `<button class="chip" aria-pressed="${d === p.duration}" data-d="${d}">${fmtDur(d)}</button>`).join('')}</div>
         <div class="row" style="align-items:end;gap:8px"><label class="f" style="width:96px">Minutos<input type="number" id="dMin" min="0" max="30" step="1" inputmode="numeric"></label><label class="f" style="width:96px">Segundos<input type="number" id="dSec" min="0" max="59" step="1" inputmode="numeric"></label><span class="small mute" style="padding-bottom:10px">Duración personalizada</span></div>
         <div class="note" id="durEst" style="margin:0"></div></div>
+      <div><div class="small" style="margin-bottom:6px">Animación del video</div><div class="chips" id="animSel">${[['2d', '2D (dibujos animados; tus personajes-imagen se ven tal cual)'], ['3d', '3D (personajes en 3D; las imágenes usan su doble 3D)']].map(([k, l]) => `<button class="chip" data-a="${k}" aria-pressed="${animOf() === k}">${l}</button>`).join('')}</div></div>
       <div><div class="small" style="margin-bottom:6px">Personajes del reparto</div><div class="chips" id="cast">${chars.map(c => `<button class="chip" aria-pressed="${p.cast.includes(c.id)}" data-c="${c.id}">${esc(c.name)}</button>`).join('')}</div></div>
       ${p.methodId && App.Gym ? `<div class="note info">Basado en la ficha: <b>${esc(App.Gym.byId(p.methodId)?.n || '')}</b>${p.formatHint ? ' · ' + esc(p.formatHint) : ''}</div>` : ''}
       <div class="row"><button class="btn primary" id="genProps">${icon('spark')}Generar propuestas con IA</button><button class="btn" id="tplProps">Usar plantillas (sin IA)</button></div>
@@ -537,6 +550,7 @@ App.productionView = async (main, mod) => {
     $('#dMin').onblur = $('#dSec').onblur = () => setTimeout(() => { if (!['dMin', 'dSec'].includes((document.activeElement || {}).id)) showDur(false); }, 0);
     $('#fmt').addEventListener('change', () => showDur(true));
     showDur(false);
+    $$('#animSel .chip').forEach(b => b.onclick = () => { p.anim = b.dataset.a; App.state.gymStyle = styleOf(); $$('#animSel .chip').forEach(x => x.setAttribute('aria-pressed', x === b)); if (p.storyboard) { p.storyboard = null; UI.toast('Cambiaste la animación: el storyboard se rehará con el nuevo estilo.', 'warn'); } if (p.render) p.render.stale = true; save(); renderSteps(); });
     $$('#cast .chip').forEach(b => b.onclick = () => { const id = b.dataset.c; p.cast = p.cast.includes(id) ? p.cast.filter(x => x !== id) : [...p.cast, id]; if (!p.cast.length) p.cast = [id]; b.setAttribute('aria-pressed', p.cast.includes(id)); save(); });
     const need = () => { sync(); if (!p.idea) { UI.toast('Escribe primero una idea.', 'warn'); return false; } return true; };
     $('#genProps').onclick = e => need() && UI.busy(e.currentTarget, async () => { p.proposals = await Gen.proposals(p, chars.filter(c => p.cast.includes(c.id)).concat(chars.filter(c => !p.cast.includes(c.id)))); p.proposalSource = 'ia'; p.selected = null; await save(); go(1); }, 'Pensando propuestas…');
@@ -677,7 +691,7 @@ App.productionView = async (main, mod) => {
       return {...s, dialogue: el.querySelector('#e_dlg').value.trim(), speaker: el.querySelector('#e_sp').value, text: el.querySelector('#e_txt').value.trim(), bg: el.querySelector('#e_bg').value, camera: el.querySelector('#e_cam').value, transition: el.querySelector('#e_tr').value, dur: clamp(+el.querySelector('#e_dur').value || 3, 1, 15), chars: cs, objects: [...el.querySelectorAll('#e_obj [aria-pressed=true]')].map(b => b.dataset.o).slice(0, 3), highlight: !!(el.querySelector('#e_hl') || {}).checked || !!extra.zoneHL, view: extra.view, overlay: extra.overlay !== undefined ? extra.overlay : s.overlay, emojis: extra.emojis || s.emojis};
     };
     const cv = el.querySelector('#e_prev'); let raf, t0 = performance.now();
-    const loop = () => { if (!document.body.contains(cv)) return cancelAnimationFrame(raf); const tmp = read(); const tl = E.build({...p, storyboard: {scenes: [tmp]}, subs: settings.subs, gymStyle: settings.gymStyle || 'estudio3d', render3d: settings.gymStyle !== 'plano'}, allChars, {W: 360, H: p.format === 'vertical' ? 640 : 202}); if (p.format !== 'vertical') { tl.W = 360; tl.H = 202; } cv.width = tl.W; cv.height = tl.H; const ctx = cv.getContext('2d'); E.drawFrame(ctx, tl, ((performance.now() - t0) / 1000) % tl.duration); raf = requestAnimationFrame(loop); };
+    const loop = () => { if (!document.body.contains(cv)) return cancelAnimationFrame(raf); const tmp = read(); const tl = E.build({...p, storyboard: {scenes: [tmp]}, subs: settings.subs, ...look3d()}, allChars, {W: 360, H: p.format === 'vertical' ? 640 : 202}); if (p.format !== 'vertical') { tl.W = 360; tl.H = 202; } cv.width = tl.W; cv.height = tl.H; const ctx = cv.getContext('2d'); E.drawFrame(ctx, tl, ((performance.now() - t0) / 1000) % tl.duration); raf = requestAnimationFrame(loop); };
     loop();
     el.querySelectorAll('#e_obj .chip').forEach(b => b.onclick = () => { const on = b.getAttribute('aria-pressed') !== 'true'; if (on && el.querySelectorAll('#e_obj [aria-pressed=true]').length >= 3) return UI.toast('Máximo 3 objetos por escena.', 'warn'); b.setAttribute('aria-pressed', on); });
     el.querySelector('#e_addc').onclick = () => { const cur = read(); if (cur.chars.length >= 3) return UI.toast('Máximo 3 personajes por escena.', 'warn'); const host = el.querySelector('#e_chars'); host.insertAdjacentHTML('beforeend', charRow({id: chars[0].id, pos: 'der', act: 'idle', expr: 'neutral'}, cur.chars.length)); };
@@ -951,7 +965,9 @@ App.charactersView = async (main, mod) => {
         <div class="row" style="align-items:center"><button class="btn sm" id="k_pick">${icon('upload')}${img ? 'Cambiar imagen' : 'Elegir imagen'}</button><label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="k_rmbg" checked> Quitar fondo liso automáticamente</label>${img ? '<button class="btn sm ghost" id="k_noimg">Quitar imagen</button>' : ''}<input type="file" id="k_file" accept="${App.CharImage.accept}" hidden></div>
         <div class="small" id="k_imgmsg">${img ? (img.local ? 'Imagen guardada dentro del personaje (versión reducida, porque la nube gratuita no está disponible en esta vista).' : 'Imagen guardada en tu nube gratuita.') : 'Sube un dibujo o PNG de tu personaje (mejor con fondo transparente o liso). Se anima solo: rebota al hablar, se balancea, salta al celebrar y tiembla si está preocupado.'}</div>
         <div class="grid g2" id="k_imgopts" ${img ? '' : 'hidden'}><label class="f">La imagen mira hacia<select id="k_faces">${opt({front: 'Al frente (no se voltea)', right: 'La derecha', left: 'La izquierda'}, (img && img.faces) || 'front')}</select></label><label class="f">Tamaño en escena<input type="range" id="k_iscale" min=".7" max="1.3" step=".02" value="${L.imgScale || 1}"></label></div>
-        <div class="small mute">${mod === 'gym' ? 'En las demostraciones de ejercicios la imagen no puede moverse como un cuerpo: se usa un doble 3D con los colores de abajo (piel, pelo, prenda, pantalón y zapatos).' : 'Usa imágenes tuyas o que tengas derecho a usar; no subas personajes de marcas, series o canales ajenos.'}</div></div>
+        <div class="small mute">En videos 2D tu imagen se anima sola en cada acción y ejercicio (sentadilla, pesas, correr, saltar…) con los implementos dibujados encima. En videos 3D se usa un doble 3D con los colores de abajo. Usa imágenes tuyas o que tengas derecho a usar.</div>
+        <div id="k_poses" ${img ? '' : 'hidden'}><b class="small">Imágenes por acción (opcional)</b><div class="small mute">Si tienes una imagen de tu personaje en una pose concreta, súbela y se usará sola en esa acción o ejercicio.</div>
+          <div class="row" style="margin-top:6px"><select id="k_pact" style="width:auto">${Object.entries({...A.ACT_LABEL, ...Object.fromEntries(A.moveList.map(m => [m.id, '▶ ' + m.label]))}).map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join('')}</select><button class="btn sm" id="k_padd">${icon('upload')}Subir imagen de esa acción</button><input type="file" id="k_pfile" accept="${App.CharImage.accept}" hidden></div><div class="chips" id="k_plist" style="margin-top:6px"></div></div></div>
       <div class="grid g2"><label class="f">Nombre<input id="k_name" value="${esc(c.name)}"></label><label class="f">Rol<input id="k_role" value="${esc(c.role)}"></label></div>
       <label class="f">Personalidad<textarea id="k_pers">${esc(c.personality)}</textarea></label>
       <div class="grid g2"><label class="f">Estilo de dibujo<select id="k_style2">${opt(styles(), L.style === 'image' && img ? 'image' : (L.style && L.style !== 'image' ? L.style : 'normal'))}</select></label><label class="f">Complexión anatómica${img ? ' / del doble' : ''}<select id="k_body">${opt({m: 'Masculina', f: 'Femenina'}, L.body || 'm')}</select></label></div>
@@ -966,14 +982,16 @@ App.charactersView = async (main, mod) => {
     const cv = q('#k_cv'); const t0 = performance.now();
     const loop = () => {
       if (!document.body.contains(cv)) return; const t = (performance.now() - t0) / 1000; const x = cv.getContext('2d'); x.clearRect(0, 0, 240, 300); const ch = read();
-      if (A.isImage(ch) && mod === 'gym' && Math.floor(t / 4) % 2 === 1 && App.Art3D) { App.Art3D.draw(x, 240, 300, {char: ch, move: 'squat', t, theme: 'light', fitH: .8}); q('#k_cvlbl').textContent = 'Doble 3D para ejercicios (usa los colores de abajo)'; }
+      const ph = Math.floor(t / 4) % 3;
+      if (A.isImage(ch) && mod === 'gym' && ph === 2 && App.Art3D) { App.Art3D.draw(x, 240, 300, {char: ch, move: 'squat', t, theme: 'light', fitH: .8}); q('#k_cvlbl').textContent = 'Video 3D: doble 3D con los colores de abajo'; }
+      else if (A.isImage(ch) && mod === 'gym' && ph === 1) { const mv = ['squat', 'curl', 'press', 'sprint', 'pushup'][Math.floor(t / 12) % 5]; const {pose} = A.poseAt(mv, t); A.drawCharacter(x, ch, {x: 120, y: 285, scale: .76, facing: 1, pose, act: mv, exercise: true, expr: 'confident', t}); q('#k_cvlbl').textContent = 'Video 2D: ' + A.MOVES[mv].label + ' con tu imagen'; }
       else { const act = A.isImage(ch) ? ['talk', 'celebrate', 'think', 'worried'][Math.floor(t / 2.5) % 4] : 'talk'; const {pose} = A.poseAt(act, t); A.drawCharacter(x, ch, {x: 120, y: 285, scale: .76, facing: 1, pose, act, expr: act === 'think' ? 'thinking' : act === 'worried' ? 'worried' : 'happy', t, talk: act === 'talk' ? Math.abs(Math.sin(t * 12)) * .7 : 0}); q('#k_cvlbl').textContent = A.isImage(ch) ? 'Vista previa: ' + (A.ACT_LABEL[act] || act) : ''; }
       requestAnimationFrame(loop);
     };
     loop();
     const setImg = (nimg, msg) => {
       if (img && img.assetId && img.assetId !== origAsset) dropAssets.push(img.assetId);
-      img = nimg; q('#k_imgopts').hidden = !img; q('#k_imgmsg').textContent = msg;
+      img = nimg; q('#k_imgopts').hidden = !img; q('#k_poses').hidden = !img; q('#k_imgmsg').textContent = msg;
       const cur = q('#k_style2').value; q('#k_style2').innerHTML = opt(styles(), img ? 'image' : cur === 'image' ? 'normal' : cur);
     };
     const fillFromAI = async (blob) => {
@@ -990,6 +1008,11 @@ App.charactersView = async (main, mod) => {
         q('#k_imgmsg').innerHTML = esc(base) + ' La IA sugirió nombre, rol y colores; cámbialos si quieres.' + (r.conocido ? `<div class="note" style="margin-top:6px"><b>Ojo con los derechos:</b> ${esc(r.aviso || 'parece un personaje existente de otra marca o canal.')} Úsalo solo si es tuyo o tienes permiso.</div>` : '');
       } catch (e) { q('#k_imgmsg').textContent = base + ' ' + (e.userMsg || 'La IA no pudo analizarla; los colores del doble se detectaron automáticamente.'); }
     };
+    L.poses = L.poses || {};
+    const drawPoses = () => { const lbl = {...A.ACT_LABEL, ...Object.fromEntries(A.moveList.map(m => [m.id, m.label]))}; q('#k_plist').innerHTML = Object.keys(L.poses).map(k => `<button class="chip" data-prm="${k}" title="Quitar">${esc(lbl[k] || k)} ✕</button>`).join('') || '<span class="small mute">Sin imágenes extra: se usan las animaciones automáticas.</span>'; el.querySelectorAll('[data-prm]').forEach(b => b.onclick = () => { const pz = L.poses[b.dataset.prm]; if (pz && pz.assetId) dropAssets.push(pz.assetId); delete L.poses[b.dataset.prm]; drawPoses(); }); };
+    drawPoses();
+    q('#k_padd').onclick = () => q('#k_pfile').click();
+    q('#k_pfile').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; UI.busy(q('#k_padd'), async () => { const {img: pi} = await takeImage(f, q('#k_rmbg').checked); L.poses[q('#k_pact').value] = pi; drawPoses(); UI.toast('Imagen añadida para esa acción.'); }, 'Procesando…'); };
     q('#k_pick').onclick = () => q('#k_file').click();
     q('#k_file').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; UI.busy(q('#k_pick'), async () => {
       const {res, img: ni} = await takeImage(f, q('#k_rmbg').checked);
