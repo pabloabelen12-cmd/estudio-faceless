@@ -29,14 +29,15 @@ V['fin-dashboard'] = async (main) => {
   App.ideasPanel($('#ideasHost'), 'fin');
 };
 /* escena animada de portada */
-function heroLoop(cv, mod) {
-  const chars = A.defaultCharacters;
+async function heroLoop(cv, mod) {
+  const all = await App.Lib.chars(); const alien = all.find(c => A.isImage(c) && App.charIn(c, 'gym')); if (alien) await A.preload([alien]);
+  const chars = A.defaultCharacters.concat(alien ? [alien] : []); const gid = alien ? alien.id : 'tomi';
   const tl = E.build({format: 'horizontal', module: mod, subs: false, progressBar: false, storyboard: {scenes: mod === 'fin'
     ? [{bg: 'estudio', chars: [{id: 'tomi', pos: 'izq', act: 'present', expr: 'confident'}, {id: 'boli', pos: 'der', act: 'think', expr: 'thinking'}], speaker: 'tomi', dialogue: 'Antes de gastar, mira a dónde va cada peso.', text: 'Tu dinero, claro', objects: ['chart_up', 'piggy'], camera: 'zoom_in', dur: 5, transition: 'cut'},
        {bg: 'ciudad', chars: [{id: 'tomi', pos: 'izq', act: 'talk', expr: 'happy'}, {id: 'boli', pos: 'der', act: 'celebrate', expr: 'excited'}], speaker: 'tomi', dialogue: 'Paso a paso.', text: 'Aprende y crece', objects: ['coins'], camera: 'push_speaker', dur: 5, transition: 'wipe'}]
-    : [{bg: 'gimnasio', chars: [{id: 'tomi', move: 'kbswing'}], speaker: 'narrador', dialogue: '', text: 'Training Lab', objects: ['muscle'], camera: 'zoom_in', dur: 4, transition: 'cut', highlight: true},
-       {bg: 'patio', chars: [{id: 'tomi', move: 'carry'}], speaker: 'narrador', dialogue: '', text: 'Métodos distintos', objects: [], camera: 'pan_left', dur: 4, transition: 'slide'},
-       {bg: 'muro', chars: [{id: 'tomi', move: 'climb'}], speaker: 'narrador', dialogue: '', text: 'Con evidencia', objects: ['book'], camera: 'zoom_out', dur: 4, transition: 'fade'}]}}, chars);
+    : [{bg: 'gimnasio', chars: [{id: gid, move: 'kbswing'}], speaker: 'narrador', dialogue: '', text: 'Training Lab', objects: ['muscle'], camera: 'zoom_in', dur: 4, transition: 'cut', highlight: true},
+       {bg: 'patio', chars: [{id: gid, move: 'carry'}], speaker: 'narrador', dialogue: '', text: 'Métodos distintos', objects: [], camera: 'pan_left', dur: 4, transition: 'slide'},
+       {bg: 'muro', chars: [{id: gid, move: 'climb'}], speaker: 'narrador', dialogue: '', text: 'Con evidencia', objects: ['book'], camera: 'zoom_out', dur: 4, transition: 'fade'}]}}, chars);
   const res = .4; cv.width = tl.W * res; cv.height = tl.H * res; const ctx = cv.getContext('2d'); const t0 = performance.now();
   const loop = () => { if (!document.body.contains(cv)) return; ctx.save(); ctx.scale(res, res); E.drawFrame(ctx, tl, ((performance.now() - t0) / 1000) % tl.duration); ctx.restore(); requestAnimationFrame(loop); };
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches) loop(); else { ctx.scale(res, res); E.drawFrame(ctx, tl, 2); }

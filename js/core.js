@@ -243,7 +243,7 @@ const Voice = App.Voice = {
     return new Promise(res => {
       try {
         const u = new SpeechSynthesisUtterance(text); u.lang = 'es-ES';
-        const vs = this.browserVoices(); const v = vs.find(x => x.name === cfg.browserVoice) || vs[0];
+        const vs = this.browserVoices(); const male = /pablo|jorge|ra[uú]l|alvaro|álvaro|diego|gonzalo|enrique|carlos|juan|andr[eé]s|gerardo|jos[eé]|antonio|miguel|male|hombre/i; const v = vs.find(x => x.name === cfg.browserVoice) || (cfg.gender === 'm' && vs.find(x => male.test(x.name))) || vs[0];
         if (v) { u.voice = v; u.lang = v.lang; }
         u.rate = clamp(cfg.rate || 1, .6, 1.6); u.pitch = clamp(cfg.pitch || 1, .5, 1.6);
         u.onend = u.onerror = () => res(); speechSynthesis.speak(u);

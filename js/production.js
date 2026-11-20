@@ -8,7 +8,7 @@ const E = App.Engine, A = App.Art;
 /* ---------- biblioteca de personajes, ajustes y marca ---------- */
 const Lib = App.Lib = {
   async repoPoses() { if (this._rp !== undefined) return this._rp; if (!/^https?:/.test(location.protocol) || location.hostname.endsWith('claude.ai') || location.hostname.endsWith('claudeusercontent.com')) return (this._rp = null); try { const r = await fetch('poses/poses.json', {cache: 'no-cache'}); this._rp = r.ok ? await r.json() : null; } catch { this._rp = null; } return this._rp; },
-  async chars() { const list = (await this.chars0()).filter(c => !App.HIDDEN_CHARS.includes(c.id)).map(c => ['tomi', 'boli'].includes(c.id) ? {...c, module: 'both'} : c); const rp = await this.repoPoses(); if (rp && rp.characters) rp.characters.forEach(e => { let c = list.find(x => x.id === e.id || (e.name && x.name.toLowerCase() === e.name.toLowerCase())); if (!c && e.character) { c = clone(e.character); list.push(c); } if (c && e.poses) { c.look = c.look || {}; c.look.poses = {...Object.fromEntries(Object.entries(e.poses).map(([k, v]) => [k, {src: v}])), ...(c.look.poses || {})}; } }); return list; },
+  async chars() { const list = (await this.chars0()).filter(c => !App.HIDDEN_CHARS.includes(c.id)).map(c => { if (!['tomi', 'boli'].includes(c.id)) return c; const d = A.defaultCharacters.find(x => x.id === c.id); return {...c, module: 'fin', voice: c.voice && c.voice._v === 2 ? c.voice : clone(d.voice)}; }); const rp = await this.repoPoses(); if (rp && rp.characters) rp.characters.forEach(e => { let c = list.find(x => x.id === e.id || (e.name && x.name.toLowerCase() === e.name.toLowerCase())); if (!c && e.character) { c = clone(e.character); list.push(c); } if (c && e.poses) { c.look = c.look || {}; c.look.poses = {...Object.fromEntries(Object.entries(e.poses).map(([k, v]) => [k, {src: v}])), ...(c.look.poses || {})}; } }); return list; },
   async chars0() { const d = await Store.get('chars'); const saved = (d && d.list) || []; const base = A.defaultCharacters.map(c => ({...clone(c), ...(saved.find(s => s.id === c.id) || {})})); return base.concat(saved.filter(s => !A.defaultCharacters.some(c => c.id === s.id))); },
   async saveChars(list) { await Store.set('chars', {type: 'chars', list}); },
   async settings() { return {type: 'settings', duration: 30, format: 'vertical', music: {fin: 'upbeat', gym: 'motivacion'}, subs: true, progressBar: true, showHandle: true, quality: 'cloud', render3d: true, gymStyle: 'estudio3d', motion: 'alto', anim: {fin: '2d', gym: '3d'}, ...(await Store.get('settings') || {})}; },
@@ -475,6 +475,7 @@ App.narrations = {};
 /* ============ Vista: Crear video (flujo completo) ============ */
 App.productionView = async (main, mod) => {
   const chars = (await Lib.chars()).filter(c => App.charIn(c, mod));
+  if (!chars.length) { main.innerHTML = App.head(mod === 'fin' ? 'Finanzas' : 'Gym', 'Crear video', '') + `<div class="empty">Aún no tienes personajes en este estudio. Ve a <a href="#${mod}-personajes">Personajes</a> y crea el tuyo con <b>Desde una imagen</b>.</div>`; return; }
   const allChars = await Lib.chars(); await A.preload(allChars);
   const settings = await Lib.settings(); const brand = await Lib.brand(mod);
   const animOf = () => App.NO3D ? '2d' : (p.anim || ((settings.anim || {})[mod]) || (mod === 'gym' ? (settings.gymStyle === 'plano' ? '2d' : '3d') : '2d'));

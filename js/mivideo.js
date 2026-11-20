@@ -57,6 +57,7 @@ App.applyCustomPrompts = (p, sb) => {
 
 const view = async (main, mod) => {
   const chars = (await App.Lib.chars()).filter(c => App.charIn(c, mod));
+  if (!chars.length) { main.innerHTML = App.head(mod === 'fin' ? 'Finanzas' : 'Gym', 'Mi video', '') + `<div class="empty">Aún no tienes personajes en este estudio. Ve a <a href="#${mod}-personajes">Personajes</a> y crea el tuyo con <b>Desde una imagen</b>.</div>`; return; }
   const settings = await App.Lib.settings();
   let d = {}; try { d = JSON.parse(localStorage.getItem(DRAFT(mod)) || '{}'); } catch {}
   d = {titulo: '', idea: '', guion: '', img: '', anim: '', format: settings.format, anim3d: ((settings.anim || {})[mod]) || (mod === 'gym' ? '3d' : '2d'), cast: mod === 'fin' ? ['nico', 'marcus'] : ['volt'], ...d};
