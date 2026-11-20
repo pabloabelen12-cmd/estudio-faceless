@@ -710,7 +710,21 @@ OB.dumbbell = (c, s, t) => { c.rotate(Math.sin(t * 3) * .1); c.fillStyle = '#9aa
 OB.heart = (c, s, t) => { const k = 1 + Math.max(0, Math.sin(t * 8)) * .12; c.scale(k, k); c.fillStyle = R; c.beginPath(); c.moveTo(0, 50); c.bezierCurveTo(-90, -10, -40, -76, 0, -30); c.bezierCurveTo(40, -76, 90, -10, 0, 50); c.fill(); };
 OB.muscle = (c, s, t) => { c.fillStyle = '#ff7a45'; c.beginPath(); c.ellipse(0, 0, 70, 36 + Math.sin(t * 4) * 6, 0, 0, 7); c.fill(); c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = 3; for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(-60, i * 10); c.quadraticCurveTo(0, i * 14, 60, i * 10); c.stroke(); } };
 OB.book = (c, s, t) => { c.fillStyle = B; rr(c, -60, -70, 120, 140, 8); c.fill(); c.fillStyle = WH; c.fillRect(-46, -50, 92, 8); c.fillRect(-46, -34, 70, 8); c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(-60, -70, 14, 140); };
+/* emojis tipo sticker: borde blanco, sombra suave, entrada con rebote y leve flotación */
+const EMO = Art.EMO = {coins: '🪙', chart_up: '📈', chart_down: '📉', piggy: '🐷', card: '💳', phone: '📱', cart: '🛒', box: '📦', calculator: '🧮', bills: '💵', house: '🏠', laptop: '💻', alarm: '⏰', target: '🎯', lightbulb: '💡', warning: '⚠️', check: '✅', cross: '❌', rocket: '🚀', bank: '🏦', percent: '💯', wallet: '👛', bars: '📊', dumbbell: '🏋️', heart: '❤️', muscle: '💪', timer: '⏱️', book: '📚',
+  money: '💰', rich: '🤑', fire: '🔥', brain: '🧠', calendar: '🗓️', star: '⭐', trophy: '🏆', gem: '💎', handshake: '🤝', shock: '😱', think: '🤔', sleep: '😴', food: '🥗', water: '💧', clock: '⌛', store: '🏪', mail: '📩', key: '🔑', chain: '⛓️', growth: '🌱', medal: '🥇', bolt: '⚡', stop: '🛑', question: '❓', idea2: '✨', run: '🏃', bike: '🚴', stretch: '🧘', scale: '⚖️', car: '🚗', plane: '✈️', gift: '🎁'};
+Art.EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif';
+Art.sticker = (ctx, e, x, y, size, t = 1) => {
+  const pop = Math.min(1, t / .4), k = pop < 1 ? Math.sin(pop * Math.PI / 2) * (1 + .25 * Math.sin(pop * Math.PI)) : 1;
+  ctx.save(); ctx.translate(x, y + Math.sin(t * 2.2 + x * .01) * size * .03); ctx.rotate(Math.sin(t * 1.3 + x * .02) * .06); ctx.scale(k, k);
+  ctx.globalAlpha *= Math.min(1, t / .2);
+  ctx.font = `${Math.round(size * .78)}px ${Art.EMOJI_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const o = Math.max(2, size * .035);
+  ctx.filter = `drop-shadow(0 0 ${o}px #fff) drop-shadow(0 0 ${o * .6}px #fff) drop-shadow(0 ${size * .06}px ${size * .08}px rgba(0,0,0,.35))`;
+  ctx.fillText(e, 0, 0); ctx.filter = 'none'; ctx.restore();
+};
 Art.drawObject = (ctx, key, x, y, size, t) => {
+  if (EMO[key]) return Art.sticker(ctx, EMO[key], x, y, size, t);
   const f = OB[key]; if (!f) return;
   const pop = Math.min(1, t / .35), s = size / 160 * (pop < 1 ? (1.15 * Math.sin(pop * Math.PI / 2) + (pop > .8 ? -.15 * (pop - .8) / .2 : 0)) : 1);
   ctx.save(); ctx.translate(x, y + Math.sin(t * 2.2 + x) * size * .02); ctx.scale(s, s); ctx.globalAlpha *= Math.min(1, t / .2); f(ctx, size, t); ctx.restore();

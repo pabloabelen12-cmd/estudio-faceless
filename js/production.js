@@ -286,6 +286,7 @@ Formato: {"escenas":[{"parte":"","fondo":"","personajes":[{"id":"","pos":"izq","
         if (sc.part === 'problema' && !sc.overlay) { const f = sentences(sc.dialogue)[0] || ''; if (f) sc.overlay = {type: 'error', title: 'ERROR', items: [{text: f.split(/\s+/).slice(0, 9).join(' ')}]}; }
         if (sc.chapterTitle && !sc.overlay) sc.overlay = {type: 'board', title: sc.chapterTitle.slice(0, 40), items: sentences(sc.dialogue).slice(0, 2).map(x => ({text: x.split(/\s+/).slice(0, 6).join(' '), ok: true}))};
         if (sc.part === 'conclusion' && !sc.overlay) { const its = sentences(sc.dialogue).slice(0, 3).map(x => ({text: x.split(/\s+/).slice(0, 6).join(' '), ok: true})); if (its.length) sc.overlay = {type: 'checklist', title: 'Resumen', items: its}; }
+        if (!sc.emojis) { if (sc.part === 'gancho') sc.emojis = /\?/.test(sc.dialogue) ? ['🤔', '❓'] : ['🔥', '👀']; else if (sc.part === 'cta') sc.emojis = ['✅', '🔔']; else if (/casa_humilde/.test(sc.bg)) sc.emojis = ['😓']; else if (/mansion/.test(sc.bg)) sc.emojis = ['🤑', '✨']; }
         if (!sc.overlay && /\b(vs|versus|en vez de|o mejor)\b/i.test(sc.dialogue)) { const [a, b] = sc.dialogue.split(/\b(?:vs|versus|en vez de|o mejor)\b/i).map(x => x.replace(/[¿¡?!.,]/g, '').trim().split(/\s+/).slice(-3).join(' ')); if (a && b) sc.overlay = {type: 'versus', title: '', items: [{emoji: '', text: a}, {emoji: '', text: b}]}; }
       });
     }
