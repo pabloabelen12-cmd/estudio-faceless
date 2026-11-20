@@ -362,7 +362,8 @@ if (App.DESKTOP) {
   };
   /* versión web instalable (GitHub Pages): funciona sin internet y se instala como app con ícono */
   if (App.DESKTOP.web && 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
-  const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  try { if (new URLSearchParams(location.search).has('app')) sessionStorage.setItem('efs-app', '1'); } catch {}
+  const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone || (() => { try { return sessionStorage.getItem('efs-app') === '1'; } catch { return false; } })();
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault(); if (standalone()) return;
     const foot = document.querySelector('.sidefoot'); if (!foot || document.getElementById('installBtn')) return;
