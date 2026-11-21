@@ -8,7 +8,9 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const TR = .4;
 Engine.FORMATS = {vertical: {W: 1080, H: 1920, label: 'Vertical 9:16 (1080×1920)'}, horizontal: {W: 1920, H: 1080, label: 'Horizontal 16:9 (1920×1080)'}};
 Engine.CAMERAS = {static: 'Suave', zoom_in: 'Acercamiento', zoom_out: 'Alejamiento', pan_left: 'Paneo izquierda', pan_right: 'Paneo derecha', push_speaker: 'Enfoque al que habla', shake: 'Impacto'};
-Engine.TRANSITIONS = {cut: 'Corte', fade: 'Fundido', slide: 'Deslizar', zoom: 'Zoom', wipe: 'Barrido'};
+Engine.TRANSITIONS = {cut: 'Corte', fade: 'Fundido', slide: 'Deslizar', zoom: 'Zoom', wipe: 'Barrido', glitch: 'Glitch (falla digital)'};
+Engine.BPM = {upbeat: 116, lofi: 82, tension: 96, motivacion: 128, none: 100};
+const DARK_BG = ['gym_oscuro', 'gimnasio', 'cuadricula_osc', 'ciudad', 'muro', 'negocio', 'estudio', 'x_navy'];
 Engine.MUSIC = {upbeat: 'Animada', lofi: 'Lo-fi tranquila', tension: 'Tensión / misterio', motivacion: 'Motivación (gym)', none: 'Sin música'};
 
 /* ---------- línea de tiempo ---------- */
@@ -17,17 +19,19 @@ Engine.build = (project, charLib, opts = {}) => {
   const W = opts.W || fmt.W, H = opts.H || fmt.H, vertical = H > W;
   const scenes = []; let t = 0;
   const sb = (project.storyboard && project.storyboard.scenes) || [];
+  const look = project.look || 'explainer';
   let scale = 1;
   if (opts.fitTo && sb.length) { const tot = sb.reduce((a, s) => a + (+s.dur || 3), 0); scale = opts.fitTo / tot; }
   sb.forEach((s, i) => {
     const dur = Math.max(1.2, (+s.dur || 3) * scale);
     const sc = {...s, i, start: t, end: t + dur, dur};
+    sc.bgv = look === 'explainer' && s.bg !== 'casa_humilde' && s.bg !== 'mansion' ? (DARK_BG.includes(s.bg) ? 'x_navy' : 'x_pastel') : s.bg;
     sc.words = wordTimes(sc.dialogue || '', t + .15, t + dur - .2);
     sc.chunks = chunk(sc.words, vertical ? 4 : 7);
     scenes.push(sc); t += dur;
   });
   const chars = {}; (charLib || []).forEach(c => chars[c.id] = c);
-  return {W, H, vertical, scenes, duration: t, chars, brand: project.brand || {}, music: project.music || 'upbeat', module: project.module || 'fin',
+  return {W, H, vertical, look, bpm: Engine.BPM[project.music || 'upbeat'] || 100, scenes, duration: t, chars, brand: project.brand || {}, music: project.music || 'upbeat', module: project.module || 'fin',
     motion: project.motion || 'alto', subs: project.subs !== false, render3d: project.render3d !== false && project.gymStyle !== 'plano', gymStyle: project.gymStyle || 'estudio3d', captionStyle: project.module === 'gym' && (project.gymStyle || 'estudio3d') === 'estudio3d' ? 'clean' : 'box', progress: project.progressBar !== false, handle: project.handle || '', accent: project.module === 'gym' ? '#ff7a45' : '#2ee59d'};
 };
 function wordTimes(text, a, b) {
@@ -43,7 +47,7 @@ Engine.estimateDur = text => Math.max(1.6, String(text || '').trim().split(/\s+/
 function layout(tl) {
   const {W, H, vertical} = tl;
   return vertical ? {gy: H * .79, charH: H * .35, cap: H * .13, objY: H * .32, objX: [W * .2, W * .5, W * .8], objS: W * .26, sub: H * .875, pos: {izq: .27, centro: .5, der: .73}}
-    : {gy: H * .87, charH: H * .55, cap: H * .12, objY: H * .4, objX: [W * .72, W * .86, W * .79], objS: H * .26, sub: H * .955, pos: {izq: .2, centro: .36, der: .53}};
+    : {gy: H * .91, charH: H * .57, cap: H * .025, objY: H * .4, objX: [W * .72, W * .86, W * .79], objS: H * .3, sub: H * .96, pos: {izq: .2, centro: .36, der: .53}};
 }
 function camera(sc, u, lt, tl, Lo, speakerX) {
   const {W, H} = tl; let s = 1, tx = 0, ty = 0; const e = ease(Math.min(1, u));
@@ -68,7 +72,7 @@ function drawScene(ctx, tl, sc, time, prevIds) {
   const n = list.length;
   const ovSide = sc.overlay && sc.overlay.type && !tl.vertical;
   const xs0 = list.map((c, i) => { const p = c.pos; if (typeof p === 'number') return p; if (Lo.pos[p] != null) return Lo.pos[p]; return n === 1 ? Lo.pos.centro : n === 2 ? (i ? Lo.pos.der : Lo.pos.izq) : [Lo.pos.izq, Lo.pos.centro, Lo.pos.der][i] ?? .5; });
-  const xs = ovSide ? xs0.map(x => .6 + x * .32) : xs0;
+  const xs = ovSide ? xs0.map(x => .62 + x * .42) : xs0;
   const gymMove = list.some(c => c.move && A.MOVES[c.move]);
   const speakerIdx = list.findIndex(c => c.id === sc.speaker);
   const speakerX = speakerIdx >= 0 ? xs[speakerIdx] * W : null;
@@ -86,7 +90,7 @@ function drawScene(ctx, tl, sc, time, prevIds) {
       highlight: !!sc.highlight, muscles: c0.muscles, theme: A3.themeFor(sc.bg), speed: c0.speed || 1, view: sc.view, variant: c0.variant, tint: c0.tint, variant2: c1 && c1.variant, tint2: c1 && c1.tint,
       shiftX: ov && !tl.vertical ? .72 : .5, cyFrac: ov && tl.vertical ? (talk3d ? .8 : .78) : undefined, fitH: ov && tl.vertical ? (talk3d ? .5 : .4) : (ov && !tl.vertical ? (talk3d ? .72 : .6) : undefined)});
   }
-  else { const bgf = A.BG[sc.bg] || A.BG[tl.module === 'gym' ? 'gimnasio' : 'oficina']; bgf(ctx, W, H, Lo.gy, time); }
+  else { const bgf = A.BG[sc.bgv || sc.bg] || A.BG[tl.module === 'gym' ? 'gimnasio' : 'oficina']; bgf(ctx, W, H, Lo.gy, time, {i: sc.i}); }
   // locomoción
   const loco = list.map(c => c.move && A.MOVES[c.move] && A.MOVES[c.move].loco).find(Boolean);
   if (loco && !use3d) A.groundMotion(ctx, W, H, Lo.gy, time, loco);
@@ -134,7 +138,7 @@ Engine.wrapText = wrapText;
 function drawCaption(ctx, tl, sc, time) {
   if (!sc.text) return; const {W, H} = tl, Lo = layout(tl); const lt = time - sc.start - .12; if (lt < 0) return;
   const k = Math.min(1, lt / .28); const sc2 = .7 + .3 * (1 - Math.pow(1 - k, 3)) + (k >= 1 ? 0 : .06 * Math.sin(k * Math.PI));
-  const fs = tl.vertical ? W * .078 : H * .085;
+  const fs = tl.vertical ? W * .078 : H * .072;
   ctx.save(); ctx.font = `900 ${fs}px Archivo, "Inter Tight", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const lines = wrapText(ctx, String(sc.text).toUpperCase(), W * (tl.vertical ? .82 : .62)).slice(0, 3);
   const lh = fs * 1.08, bw = Math.max(...lines.map(l => ctx.measureText(l).width)) + fs * .9, bh = lines.length * lh + fs * .5;
@@ -178,14 +182,14 @@ const TIER_COL = {S: '#ff5c5c', A: '#ffb86b', B: '#ffe36b', C: '#7ee08a', D: '#8
 function overlayTimes(ov) { const n = (ov.items || []).length; const base = ov.type === 'board' ? .7 : ov.type === 'error' ? .3 : ov.type === 'versus' ? .4 : .5; const step = ov.type === 'board' || ov.type === 'checklist' ? .75 : .55; return Array.from({length: Math.min(n, 8)}, (_, i) => base + i * step); }
 Engine.overlayTimes = overlayTimes;
 function panelRect(tl) { const {W, H} = tl; return tl.vertical ? {x: W * .06, y: H * .21, w: W * .88, h: H * .31} : {x: W * .04, y: H * .24, w: W * .52, h: H * .62}; }
-function emo(ctx, e, x, y, size) { ctx.save(); ctx.font = `${size}px ${EMOJI_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; const o = Math.max(2, size * .04); ctx.filter = `drop-shadow(0 0 ${o}px #fff) drop-shadow(0 ${size * .05}px ${size * .07}px rgba(0,0,0,.3))`; ctx.fillText(e, x, y); ctx.restore(); }
+function emo(ctx, e, x, y, size) { A.emojiStatic(ctx, e, x, y, size); }
 function txt(ctx, s, x, y, size, col = '#111', align = 'center', weight = 800, stroke = null) { ctx.font = `${weight} ${size}px Archivo, "Inter Tight", sans-serif`; ctx.textAlign = align; ctx.textBaseline = 'middle'; if (stroke) { ctx.lineJoin = 'round'; ctx.lineWidth = size * .18; ctx.strokeStyle = stroke; ctx.strokeText(s, x, y); } ctx.fillStyle = col; ctx.fillText(s, x, y); }
 function curvedArrow(ctx, x0, y0, x1, y1, k, w) { if (k <= 0) return; const cx = x0 - (y1 - y0) * .25, cy = y0 + (y1 - y0) * .7; ctx.save(); ctx.strokeStyle = '#ff2d2d'; ctx.fillStyle = '#ff2d2d'; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x0, y0); const N = 24; let px = x0, py = y0, qx = x0, qy = y0; for (let i = 1; i <= N * k; i++) { const t = i / N; px = (1 - t) * (1 - t) * x0 + 2 * (1 - t) * t * cx + t * t * x1; py = (1 - t) * (1 - t) * y0 + 2 * (1 - t) * t * cy + t * t * y1; ctx.lineTo(px, py); if (i === Math.floor(N * k) - 1) { qx = px; qy = py; } } ctx.stroke(); if (k > .95) { const a = Math.atan2(py - qy, px - qx); ctx.beginPath(); ctx.moveTo(px + Math.cos(a) * w * 1.6, py + Math.sin(a) * w * 1.6); ctx.lineTo(px + Math.cos(a + 2.4) * w * 2.2, py + Math.sin(a + 2.4) * w * 2.2); ctx.lineTo(px + Math.cos(a - 2.4) * w * 2.2, py + Math.sin(a - 2.4) * w * 2.2); ctx.closePath(); ctx.fill(); } ctx.restore(); }
 function drawOverlay(ctx, tl, sc, time) {
   const ov = sc.overlay; if (!ov || !ov.type) return;
   const lt = time - sc.start; if (lt < 0) return;
   const {W, H} = tl, R = panelRect(tl), items = (ov.items || []).slice(0, 8), times = overlayTimes(ov), u = Math.min(W, H);
-  const dark = ['gym_oscuro', 'gimnasio', 'cuadricula_osc', 'ciudad', 'muro'].includes(sc.bg);
+  const dark = DARK_BG.includes(sc.bgv || sc.bg);
   const k = Math.min(1, lt / .4); const ek = backOut(k);
   ctx.save();
   if (ov.type === 'tier') {
@@ -240,7 +244,19 @@ function drawOverlay(ctx, tl, sc, time) {
 function drawEmojis(ctx, tl, sc, time) {
   const es = (sc.emojis || []).slice(0, 3); if (!es.length) return; const lt = time - sc.start; const {W, H} = tl, u = Math.min(W, H);
   const pos = tl.vertical ? [[.2, .44], [.8, .4], [.78, .58]] : [[.58, .3], [.9, .28], [.9, .6]];
-  es.forEach((e, i) => { const t0 = .5 + i * .35; if (lt < t0) return; const p = Math.min(1, (lt - t0) / .45); const s = backOut(p); const [px, py] = pos[i]; ctx.save(); ctx.translate(W * px, H * py + Math.sin(time * 2.4 + i) * u * .01); ctx.rotate(Math.sin(time * 1.7 + i) * .12); ctx.scale(s, s); emo(ctx, e, 0, 0, u * .13); ctx.restore(); });
+  es.forEach((e, i) => { const t0 = .5 + i * .35; if (lt < t0) return; const s = A.spring((lt - t0) / .9); const [px, py] = pos[i]; ctx.save(); ctx.translate(W * px, H * py + Math.sin(time * 2.4 + i) * u * .01); ctx.rotate(Math.sin(time * 1.7 + i) * .12); ctx.scale(s, s); emo(ctx, e, 0, 0, u * .13); ctx.restore(); });
+}
+
+/* falla digital: franjas horizontales desplazadas + barras de color, determinista por cuadro */
+function glitchFx(ctx, tl, time, k) {
+  const {W, H} = tl, cv = ctx.canvas, fr = Math.floor(time * 24), n = 7;
+  const sy = cv.height / H;
+  for (let j = 0; j < n; j++) {
+    const r1 = Math.abs(Math.sin(fr * 12.9898 + j * 78.233) * 43758.5453) % 1, r2 = Math.abs(Math.sin(fr * 39.346 + j * 11.135) * 24634.6345) % 1;
+    const y = r1 * H * .9, h = H * (.03 + r2 * .08), dx = (r2 - .5) * W * .22 * k;
+    ctx.drawImage(cv, 0, y * sy, cv.width, h * sy, dx, y, W, h);
+    if (j % 3 === 0) { ctx.save(); ctx.globalAlpha = .35 * k; ctx.fillStyle = j % 2 ? '#ff2d6f' : '#22d3ee'; ctx.fillRect(0, y, W, h * .35); ctx.restore(); }
+  }
 }
 
 /* cuadro completo */
@@ -253,7 +269,10 @@ Engine.drawFrame = (ctx, tl, time) => {
   const prevIds = prev ? new Set((prev.chars || []).map(c => c.id)) : new Set();
   const into = time - sc.start;
   ctx.save(); ctx.clearRect(0, 0, W, H);
-  if (prev && into < TR && sc.transition && sc.transition !== 'cut') {
+  if (prev && into < .22 && sc.transition === 'glitch') {
+    drawScene(ctx, tl, into < .11 ? prev : sc, time, into < .11 ? new Set(((scenes[i - 2] || {}).chars || []).map(c => c.id)) : prevIds);
+    glitchFx(ctx, tl, time, 1 - Math.abs(into / .22 - .5) * 2);
+  } else if (prev && into < TR && sc.transition && sc.transition !== 'cut' && sc.transition !== 'glitch') {
     const pp = new Set(((scenes[i - 2] || {}).chars || []).map(c => c.id));
     drawScene(ctx, tl, prev, time, pp);
     const k = ease(into / TR);
@@ -280,37 +299,43 @@ Engine.drawFrame = (ctx, tl, time) => {
 /* ---------- capa de motion: íconos que entran, flotan y salen al ritmo de cada escena ---------- */
 const ICON_KEYS = [[/millon|rico|riqueza|fortuna/i, 'rich'], [/dinero|plata|pesos/i, 'money'], [/clave|importante|secreto/i, 'key'], [/rápido|rapido|explot|viral|fuego/i, 'fire'], [/mente|pensar|cerebro|psicolog/i, 'brain'], [/semana|mes|año|calendario|fecha/i, 'calendar'], [/ganar|éxito|exito|logro|meta cumplida/i, 'trophy'], [/socio|acuerdo|cliente/i, 'handshake'], [/miedo|susto|peligro|terrible/i, 'shock'], [/pregunta|por qué|porqué|¿/i, 'question'], [/dormir|descanso|sueño|recuperaci/i, 'sleep'], [/comida|dieta|proteína|proteina|carbohidrat|calor/i, 'food'], [/agua|hidrat/i, 'water'], [/crec|plantar|semilla|largo plazo/i, 'growth'], [/energ|potencia|explosiv/i, 'bolt'], [/correr|carrera|cardio/i, 'run'], [/estir|movilidad|flexib|yoga/i, 'stretch'], [/carro|auto|vehículo|vehiculo/i, 'car'], [/viaj/i, 'plane'], [/deuda|cadena|atrap/i, 'chain'], [/regalo|bono|gratis/i, 'gift'], [/ahorr|alcanc/i, 'piggy'], [/tarjeta|deuda|crédito|credito|préstamo|prestamo/i, 'card'], [/invers|crec|gananc|sub[ei]|aument/i, 'chart_up'], [/perd|riesgo|ca[eí]|baj[aóo]|crisis/i, 'chart_down'], [/compr|carrito|gast|tienda/i, 'cart'], [/envío|envio|paquete|producto|pedido/i, 'box'], [/celular|app|redes|tiktok|instagram|youtube|internet/i, 'phone'], [/idea|aprend|entend|clave/i, 'lightbulb'], [/meta|objetivo|plan/i, 'target'], [/tiempo|mes|año|semana|día|dia|hora/i, 'alarm'], [/interés|interes|porcentaje|%/i, 'percent'], [/banco|cuenta/i, 'bank'], [/dinero|pesos|sueldo|salario|ingreso|pago|cobr/i, 'coins'], [/billete|efectivo|rico|riqueza|millon/i, 'bills'], [/presupuesto|calcul|sumar|cuentas/i, 'calculator'], [/error|cuidado|ojo|evita|peligro|nunca/i, 'warning'], [/músculo|musculo|hipertrofia|fuerza|pesa|levant/i, 'muscle'], [/cardio|corazón|corazon|resistencia|correr/i, 'heart'], [/estudio|evidencia|ciencia|investig/i, 'book'], [/casa|hogar|renta|alquiler/i, 'house'], [/bien|correcto|logr|éxito|exito/i, 'check'], [/mal|incorrecto|no funciona/i, 'cross'], [/negocio|emprend|vender|venta|cliente/i, 'store'], [/cartera|billetera/i, 'wallet'], [/pesa|mancuerna|gimnasio|gym|entren/i, 'dumbbell']];
 Engine.iconsFor = text => { const out = []; ICON_KEYS.forEach(([re, k]) => { if ((A.EMO[k] || A.OBJ[k]) && re.test(text || '') && !out.includes(k)) out.push(k); }); return out; };
+/* Plan de íconos de una escena: cada ícono aparece EN LA PALABRA que lo provoca (si dices "dinero" sale el dinero) */
+function motionPlan(sc, tl) {
+  if (sc._mp) return sc._mp;
+  const words = sc.words || [], plan = [], used = new Set(sc.objects || []);
+  ICON_KEYS.forEach(([re, k]) => {
+    if (used.has(k) || !(A.EMO[k] || A.OBJ[k]) || plan.find(p => p.k === k)) return;
+    const w = words.find(w => re.test(w.w.replace(/[^\wáéíóúñü%]/gi, '')));
+    if (w) plan.push({k, t0: Math.max(.1, w.s - sc.start - .05)});
+  });
+  if (!plan.length && (sc.text || sc.dialogue)) { const hit = Engine.iconsFor((sc.text || '') + ' ' + (sc.dialogue || '')).filter(k => !used.has(k))[0]; if (hit) plan.push({k: hit, t0: .5}); }
+  const pool = tl.module === 'gym' ? ['muscle', 'bolt'] : ['money', 'chart_up'];
+  if (!plan.length) plan.push({k: pool[sc.i % pool.length], t0: .45});
+  plan.sort((a, b) => a.t0 - b.t0);
+  return sc._mp = plan.slice(0, tl.motion === 'medio' ? 2 : 4);
+}
 function drawMotion(ctx, tl, sc, time) {
   if (tl.motion === 'off') return;
   const lt = time - sc.start; if (lt < 0) return;
-  const {W, H} = tl, u = Math.min(W, H);
-  const icons = (sc._icons = sc._icons || [...new Set([...(sc.objects || []), ...Engine.iconsFor(sc.dialogue + ' ' + (sc.text || ''))])].filter(k => A.EMO[k] || A.OBJ[k]));
-  const n = tl.motion === 'medio' ? 3 : 6, pool = icons.length ? icons : (tl.module === 'gym' ? ['muscle', 'fire', 'bolt'] : ['money', 'lightbulb', 'chart_up']);
-  // zonas laterales y superiores, sin tapar la cara del personaje ni los subtítulos
-  const slots = tl.vertical ? [[.12, .13], [.86, .16], [.1, .52], [.9, .5], [.18, .66], [.82, .68]] : [[.07, .16], [.93, .18], [.06, .7], [.94, .66], [.2, .1], [.8, .1]];
-  const seed = sc.i * 7.13;
-  for (let j = 0; j < n; j++) {
-    const k = pool[(j + sc.i) % pool.length], [sx, sy] = slots[j];
-    const t0 = .15 + j * Math.min(.45, sc.dur / (n + 2)), age = lt - t0; if (age < 0) continue;
-    const out = sc.dur - lt; const a = Math.min(1, age / .25) * Math.min(1, Math.max(0, out / .3));
-    if (a <= 0) continue;
-    const pop = age < .35 ? 1 + .35 * Math.sin(age / .35 * Math.PI) : 1;
-    const x = W * sx + Math.sin(time * .9 + seed + j) * u * .018, y = H * sy + Math.cos(time * 1.1 + seed + j * 2) * u * .016;
-    const size = u * (tl.vertical ? .085 : .075) * (j < 2 ? 1.15 : .9) * pop;
-    ctx.save(); ctx.globalAlpha = a * .92;
-    // halo de color detrás del ícono
-    const glow = ctx.createRadialGradient(x, y, 0, x, y, size * .75); glow.addColorStop(0, tl.accent + '55'); glow.addColorStop(1, tl.accent + '00'); ctx.globalAlpha = a; ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(x, y, size * .75, 0, 7); ctx.fill(); ctx.globalAlpha = a * .95;
-    ctx.translate(x, y); ctx.rotate(Math.sin(time * 1.4 + j) * .12); A.drawObject(ctx, k, 0, 0, size, age); ctx.restore();
-  }
-  // destellos y formas de acento (movimiento constante pero suave)
-  const m = tl.motion === 'medio' ? 4 : 9;
-  for (let j = 0; j < m; j++) {
-    const ph = (lt * .35 + j / m + sc.i * .17) % 1, x = W * ((j * .37 + sc.i * .11) % 1), y = H * (.08 + ((j * .53) % .55)) - ph * H * .06;
-    ctx.save(); ctx.globalAlpha = Math.sin(ph * Math.PI) * .5; ctx.strokeStyle = j % 3 ? tl.accent : '#ffffff'; ctx.lineWidth = u * .004; const r = u * (.006 + (j % 3) * .004);
-    if (j % 3 === 0) { ctx.beginPath(); ctx.moveTo(x - r * 2, y); ctx.lineTo(x + r * 2, y); ctx.moveTo(x, y - r * 2); ctx.lineTo(x, y + r * 2); ctx.stroke(); }
-    else { ctx.beginPath(); ctx.arc(x, y, r * 1.6, 0, 7); ctx.stroke(); }
+  const {W, H} = tl, u = Math.min(W, H), plan = motionPlan(sc, tl);
+  // casillas libres (a los lados y arriba) para no tapar al personaje ni los subtítulos
+  const slots = tl.vertical ? [[.14, .14], [.86, .17], [.12, .5], [.88, .48]] : [[.085, .24], [.915, .24], [.075, .62], [.925, .6]];
+  const beat = 60 / (tl.bpm || 110), bphase = (time / beat) % 1;
+  const pulse = 1 + .05 * Math.pow(Math.max(0, Math.cos(bphase * Math.PI * 2)), 6);   // todos laten a la vez, con el ritmo de la música
+  plan.forEach((it, j) => {
+    const age = lt - it.t0; if (age < 0) return;
+    const out = sc.dur - lt, ex = Math.min(1, Math.max(0, out / .22));        // salida: se encogen todos juntos al cortar la escena
+    const [sx, sy] = slots[j % slots.length], k = A.spring(age / .8);
+    if (k <= 0) return;
+    const fromX = sx < .5 ? -.12 : 1.12;                                      // entran deslizando desde el borde más cercano
+    const x = W * (fromX + (sx - fromX) * Math.min(1.08, k)) , y = H * sy + Math.sin(time * Math.PI / beat + j * 1.7) * u * .012;
+    const size = u * (tl.vertical ? .13 : .12) * pulse * (.4 + .6 * ex), rot = (1 - k) * (sx < .5 ? -.6 : .6) + Math.sin(time * Math.PI / beat * .5 + j) * .05;
+    ctx.save(); ctx.globalAlpha = Math.min(1, age / .1) * (.2 + .8 * ex);
+    // anillo de impacto al aparecer (feedback visual del "pop")
+    if (age < .45) { const rk = age / .45; ctx.strokeStyle = tl.accent; ctx.globalAlpha *= (1 - rk) * .9; ctx.lineWidth = u * .008 * (1 - rk) + 1; ctx.beginPath(); ctx.arc(W * sx, H * sy, size * (.4 + rk * .9), 0, 7); ctx.stroke(); ctx.globalAlpha = Math.min(1, age / .1) * (.2 + .8 * ex); }
+    ctx.translate(x, y); ctx.rotate(rot); if (A.EMO[it.k]) A.emojiStatic(ctx, A.EMO[it.k], 0, 0, size); else A.drawObject(ctx, it.k, 0, 0, size, 9);
     ctx.restore();
-  }
+  });
 }
 
 /* ---------- audio: música original sintetizada + efectos ---------- */
@@ -319,9 +344,9 @@ Engine.newAudioContext = () => { const AC = window.AudioContext || window.webkit
    y el búfer lleva una cola extra para que las notas que cruzan el borde suenen completas. Así un video de
    30 minutos se mezcla en tramos de 30 s en vez de un único búfer enorme. */
 const AUDIO_TAIL = 3;
-Engine.renderAudioWindow = async (tl, from, to, nar, mix) => {
+Engine.renderAudioWindow = async (tl, from, to, nar, mix, sampleRate = 44100) => {
   const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-  const sr = 44100, D = tl.duration + .3; to = Math.min(to, D + .2);
+  const sr = sampleRate, D = tl.duration + .3; to = Math.min(to, D + .2);
   const len = Math.max(1, Math.ceil((to - from + AUDIO_TAIL) * sr));
   const ac = new OAC(2, len, sr);
   const master = ac.createDynamicsCompressor(); master.threshold.value = -14; master.ratio.value = 4;
@@ -481,7 +506,15 @@ Engine.pickMime = () => {
   const c = ['video/mp4;codecs=avc1.640028,mp4a.40.2', 'video/mp4;codecs=avc1.4D401F,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a', 'video/mp4;codecs=avc1,opus', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
   return c.find(m => { try { return MediaRecorder.isTypeSupported(m); } catch { return false; } }) || null;
 };
-Engine.record = async (tl, {ac, narration, bitrate, onProgress, cancel} = {}) => {
+/* Render: primero el modo de alta calidad (cuadro por cuadro, FPS exactos); si el navegador no lo soporta, graba en tiempo real */
+Engine.record = async (tl, opts = {}) => {
+  if (opts.hq !== false && Engine.recordHQ) {
+    try { const r = await Engine.recordHQ(tl, opts); if (r) return r; }
+    catch (e) { if (e && e.userMsg) throw e; console.warn('Render HQ no disponible, se usa grabación en tiempo real:', e); opts.onProgress && opts.onProgress(0, 'Modo compatible (tiempo real)…'); }
+  }
+  return Engine.recordLive(tl, opts);
+};
+Engine.recordLive = async (tl, {ac, narration, bitrate, onProgress, cancel, fps = 30} = {}) => {
   const mime = Engine.pickMime();
   if (!mime) throw Object.assign(new Error('Este navegador no puede grabar video. Usa Chrome o Edge actualizados en tu computadora.'), {userMsg: 'Este navegador no puede grabar video. Usa Chrome o Edge actualizados en tu computadora.'});
   const cv = document.createElement('canvas'); cv.width = tl.W; cv.height = tl.H; const ctx = cv.getContext('2d', {alpha: false});
@@ -492,7 +525,7 @@ Engine.record = async (tl, {ac, narration, bitrate, onProgress, cancel} = {}) =>
   ac = ac || Engine.newAudioContext(); await ac.resume();
   const dest = ac.createMediaStreamDestination();
   const streamer = new Engine.AudioStreamer(ac, dest, tl, narration);
-  const vStream = cv.captureStream(30);
+  const vStream = cv.captureStream(Math.min(60, fps));
   const stream = new MediaStream([...vStream.getVideoTracks(), ...dest.stream.getAudioTracks()]);
   const rec = new MediaRecorder(stream, {mimeType: mime, videoBitsPerSecond: bitrate || 6e6, audioBitsPerSecond: 128000});
   const chunks = []; rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };

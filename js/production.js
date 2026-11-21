@@ -11,7 +11,12 @@ const Lib = App.Lib = {
   async chars() { const list = (await this.chars0()).filter(c => !App.HIDDEN_CHARS.includes(c.id)).map(c => { if (!['tomi', 'boli'].includes(c.id)) return c; const d = A.defaultCharacters.find(x => x.id === c.id); return {...c, module: 'fin', voice: c.voice && c.voice._v === 2 ? c.voice : clone(d.voice)}; }); const rp = await this.repoPoses(); if (rp && rp.characters) rp.characters.forEach(e => { let c = list.find(x => x.id === e.id || (e.name && x.name.toLowerCase() === e.name.toLowerCase())); if (!c && e.character) { c = clone(e.character); list.push(c); } if (c && e.poses) { c.look = c.look || {}; c.look.poses = {...Object.fromEntries(Object.entries(e.poses).map(([k, v]) => [k, {src: v}])), ...(c.look.poses || {})}; } }); return list; },
   async chars0() { const d = await Store.get('chars'); const saved = (d && d.list) || []; const base = A.defaultCharacters.map(c => ({...clone(c), ...(saved.find(s => s.id === c.id) || {})})); return base.concat(saved.filter(s => !A.defaultCharacters.some(c => c.id === s.id))); },
   async saveChars(list) { await Store.set('chars', {type: 'chars', list}); },
-  async settings() { return {type: 'settings', duration: 30, format: 'vertical', music: {fin: 'upbeat', gym: 'motivacion'}, subs: true, progressBar: true, showHandle: true, quality: 'cloud', render3d: true, gymStyle: 'estudio3d', motion: 'alto', anim: {fin: '2d', gym: '3d'}, ...(await Store.get('settings') || {})}; },
+  async settings() {
+    const st = await Store.get('settings') || {};
+    const s = {type: 'settings', duration: 30, format: 'horizontal', music: {fin: 'upbeat', gym: 'motivacion'}, subs: true, progressBar: true, showHandle: true, quality: 'cloud', render3d: true, gymStyle: 'estudio3d', motion: 'alto', anim: {fin: '2d', gym: '3d'}, res: 1080, fps: 60, qual: 'alta', ...st};
+    if (!st.hq2) { s.hq2 = true; s.format = 'horizontal'; s.res = 1080; s.fps = 60; s.qual = 'alta'; s.motion = 'alto'; try { await Store.set('settings', s); } catch {} }   // migración: YouTube 16:9, 1080p, 60 FPS
+    return s;
+  },
   async brand(mod) { const b = await Store.get('brand') || {type: 'brand'}; return b[mod] || {}; },
   async saveBrand(mod, data) { const b = await Store.get('brand') || {type: 'brand'}; b[mod] = data; await Store.set('brand', b); }
 };
@@ -254,7 +259,7 @@ Formato: {"escenas":[{"parte":"","fondo":"","personajes":[{"id":"","pos":"izq","
     const CAMS = ['pan_left', 'zoom_in', 'push_speaker', 'zoom_out', 'pan_right'];
     const EXP = {gancho: 'surprised', problema: 'worried', explicacion: 'confident', ejemplo: 'thinking', conclusion: 'happy', cta: 'excited'};
     const EXPS = ['confident', 'thinking', 'happy', 'surprised', 'confident'];
-    const TRS = ['cut', 'slide', 'fade', 'zoom', 'wipe', 'slide'];
+    const TRS = ['cut', 'slide', 'glitch', 'zoom', 'wipe', 'slide', 'cut', 'glitch'];
     const LBL = {problema: 'El problema', explicacion: 'La clave', ejemplo: 'Un ejemplo', conclusion: 'En resumen', cta: 'Tu siguiente paso'};
     const wc = t => t.split(/\s+/).filter(Boolean).length;
     // agrupa frases en escenas de máximo ≈ 18 palabras (las frases muy largas se parten)
@@ -760,21 +765,21 @@ App.productionView = async (main, mod) => {
   let cancel = null;
   const doRender = async (btn, {auto = false} = {}) => {
     const ac = E.newAudioContext();
-    const tl = tlOf(fitOpts()); const nar = App.narrations[p.id];
-    const bitrate = bitrateFor(tl.duration, settings.quality);
+    const tl = tlOf({...fitOpts(), ...renderSize()}); const nar = App.narrations[p.id];
+    const fps = settings.fps || 60, qual = settings.qual || 'alta', bitrate = renderBitrate(tl);
     cancel = {cancelled: false};
     const prog = $('#rProg'), lbl = $('#rLbl');
-    const res = await E.record(tl, {ac, narration: nar ? nar.buffer : null, bitrate, cancel, onProgress: (k, msg) => { if (prog) prog.style.width = (k * 100).toFixed(1) + '%'; if (lbl) lbl.textContent = `${msg} ${(k * 100).toFixed(0)}%`; }});
+    const res = await E.record(tl, {ac, narration: nar ? nar.buffer : null, bitrate, fps, qual, cancel, onProgress: (k, msg) => { if (prog) prog.style.width = (k * 100).toFixed(1) + '%'; if (lbl) lbl.textContent = `${msg} ${(k * 100).toFixed(0)}%`; }});
     try { ac.close(); } catch {}
     Usage.bump('renders');
     const probe = await E.probeVideo(res.blob);
     App.lastBlobs = App.lastBlobs || {}; App.lastBlobs[p.id] = res.blob;
-    if (lbl) lbl.textContent = 'Guardando en tu nube gratuita…';
+    if (lbl) lbl.textContent = 'Guardando…';
     let up = null; if (res.size <= 20 * 1024 * 1024) up = await Files.upload(res.blob, 'el video');
     if (p.render && p.render.assetId && up) Files.remove(p.render.assetId);
-    p.render = {assetId: up ? up.id : null, url: up ? up.url : null, mime: res.mime, ext: res.ext, size: res.size, W: res.W, H: res.H, duration: res.duration, at: Date.now(), probe, bitrate, withNarration: !!nar, stale: false, cloud: !!up};
+    p.render = {assetId: up ? up.id : null, url: up ? up.url : null, mime: res.mime, ext: res.ext, size: res.size, W: res.W, H: res.H, fps: res.fps || null, codec: res.codec || null, duration: res.duration, at: Date.now(), probe, bitrate: res.bitrate || bitrate, withNarration: !!nar, stale: false, cloud: !!up};
     await save();
-    if (!up && !auto) UI.toast(res.size > 20 * 1024 * 1024 ? `El video pesa ${fmtBytes(res.size)}, más que los 20 MB de la nube gratuita: pulsa "Descargar video" ahora (queda disponible solo mientras esta página esté abierta).` : 'No se guardó en la nube; descárgalo ahora.', 'warn', 12000);
+    if (!up && !auto) UI.toast(`El video pesa ${fmtBytes(res.size)}${res.size > 20 * 1024 * 1024 ? ', más que los 20 MB de la nube gratuita' : ''}: pulsa "Descargar video" ahora (queda disponible solo mientras esta página esté abierta).`, 'warn', 12000);
     return res;
   };
   const videoSrc = () => (App.lastBlobs && App.lastBlobs[p.id]) ? URL.createObjectURL(App.lastBlobs[p.id]) : (p.render && p.render.assetId ? Files.url(p.render.assetId) : '');
@@ -784,23 +789,33 @@ App.productionView = async (main, mod) => {
     if (!blob) return UI.toast('El archivo no está disponible en esta sesión. Vuelve a renderizar.', 'warn');
     await Files.save(`${slug(p.title)}.${p.render.ext}`, blob);
   };
+  const renderSize = () => E.sizeFor(p.format, settings.res || 1080);
+  const renderBitrate = (tl) => E.bitrateHQ(tl.W, tl.H, settings.fps || 60, settings.qual || 'alta');
   const stepRender = () => {
     if (!p.storyboard) { body().innerHTML = `<div class="empty">Primero crea el storyboard.</div>`; return; }
-    const tl = tlOf(fitOpts()); const mime = E.pickMime(); const est = durEstimate(tl.duration, settings.quality);
-    body().innerHTML = `<div class="stage"><div class="stack"><div class="card stack"><h3>Renderizar ${tl.W}×${tl.H} · ${fmtDur(tl.duration)}</h3>
-      <div class="small">Se dibuja cuadro a cuadro y se graba en tu navegador (gratis). Tarda lo mismo que dura el video (≈ ${fmtDur(tl.duration)}). Mantén esta pestaña visible mientras graba: si cambias de pestaña o minimizas, la grabación se pausa sola y sigue cuando vuelves.</div>
-      <div class="small" id="rEst">Archivo estimado: ≈ ${fmtBytes(est.size)}${est.cloud ? ' (cabe en la nube gratuita)' : ' · no cabe en la nube gratuita de 20 MB: al terminar, descárgalo antes de cerrar la página'}.</div>
-      ${tl.duration > 300 ? '<div class="note">Video largo: conecta el cargador, cierra otras pestañas pesadas y no dejes que la computadora se suspenda. Usa Chrome o Edge en computadora.</div>' : ''}
-      ${mime ? `<div class="small">Formato de salida: <b>${mime.startsWith('video/mp4') ? 'MP4' : 'WebM'}</b>${mime.startsWith('video/webm') ? ' (tu navegador no graba MP4; YouTube y TikTok aceptan WebM; para Instagram puede hacer falta convertirlo)' : ''}.</div>` : '<div class="note bad">Este navegador no puede grabar video. Usa Chrome o Edge en tu computadora.</div>'}
-      <label class="f">Calidad<select id="qSel"><option value="cloud" ${settings.quality !== 'max' ? 'selected' : ''}>${tl.duration > 107 ? 'Automática para videos largos (' + (bitrateFor(tl.duration, 'cloud') / 1e6).toFixed(1) + ' Mbps)' : 'Optimizada para la nube gratuita (≤ 18 MB)'}</option><option value="max" ${settings.quality === 'max' ? 'selected' : ''}>Máxima (8 Mbps; ≈ 1 MB por segundo de video)</option></select></label>
+    const tl = tlOf({...fitOpts(), ...renderSize()}); const hq = !!(window.VideoEncoder && window.AudioEncoder && window.VideoFrame);
+    const est = () => { const b = renderBitrate(tl), size = (b + 192000) * tl.duration / 8; return {b, size}; };
+    const estTxt = () => { const x = est(); return `Archivo estimado: ≈ ${fmtBytes(x.size)} (${(x.b / 1e6).toFixed(0)} Mbps)${x.size <= 20 * 1024 * 1024 ? ' · cabe en la nube gratuita' : ' · es más grande que los 20 MB de la nube gratuita: al terminar, pulsa "Descargar video" antes de cerrar la página'}.`; };
+    const opt = (o, cur) => Object.entries(o).map(([k, v]) => `<option value="${k}" ${String(k) === String(cur) ? 'selected' : ''}>${v}</option>`).join('');
+    body().innerHTML = `<div class="stage"><div class="stack"><div class="card stack"><h3>Renderizar para YouTube · ${tl.W}×${tl.H} · ${settings.fps || 60} FPS · ${fmtDur(tl.duration)}</h3>
+      ${hq ? `<div class="small">Cada cuadro se dibuja y se guarda con su tiempo exacto (no se graba en vivo), así que el video sale fluido a los FPS que elijas aunque tu computadora sea lenta. <b>Puedes cambiar de pestaña</b> mientras renderiza. Formato de salida: <b>MP4 (H.264)</b>, listo para subir a YouTube.</div>`
+        : `<div class="note">Este navegador no tiene el renderizador de alta calidad; se grabará en tiempo real (hasta 60 FPS). Para 60–144 FPS exactos usa Chrome o Edge actualizados en tu computadora y mantén esta pestaña visible.</div>`}
+      <div class="grid g3">
+        <label class="f">Resolución<select id="rRes">${opt(E.RES, settings.res || 1080)}</select></label>
+        <label class="f">Fluidez<select id="rFps">${opt(E.FPS_OPTS, settings.fps || 60)}</select></label>
+        <label class="f">Calidad<select id="rQual">${opt(E.QUALS, settings.qual || 'alta')}</select></label></div>
+      <div class="small" id="rEst">${estTxt()}</div>
+      <div class="small mute">YouTube reproduce hasta 60 FPS; 90–144 FPS sirven para ver el video en tu pantalla o para editarlo. Para el canal usa 60 FPS en 1080p o 1440p.</div>
+      ${tl.duration > 300 ? '<div class="note">Video largo: conecta el cargador y no dejes que la computadora se suspenda. A 60 FPS tarda aproximadamente lo que dura el video (más rápido con tarjeta gráfica).</div>' : ''}
       ${App.narrations[p.id] ? `<div class="tag ok">Con narración: ${esc(App.narrations[p.id].name)}</div>` : p.narrationName ? `<div class="note">Usaste la narración "${esc(p.narrationName)}" antes. Vuelve a subirla en el paso Voces si quieres que el nuevo render la incluya.</div>` : ''}
       <div class="bar"><i id="rProg" style="width:0%"></i></div><div class="small" id="rLbl"></div>
-      <div class="row"><button class="btn primary" id="rGo" ${mime ? '' : 'disabled'}>${icon('film')}Renderizar video</button><button class="btn" id="rCancel">Cancelar</button></div></div>
-      ${p.render ? `<div class="card small">Último render: ${fmtDate(p.render.at)} · ${p.render.ext.toUpperCase()} · ${fmtBytes(p.render.size)} · ${p.render.cloud ? 'guardado en la nube' : 'solo en esta sesión'}${p.render.stale ? ' · <span class="tag warn">desactualizado: hubo cambios</span>' : ''}</div>` : ''}
+      <div class="row"><button class="btn primary" id="rGo" ${hq || E.pickMime() ? '' : 'disabled'}>${icon('film')}Renderizar video</button><button class="btn" id="rCancel">Cancelar</button></div></div>
+      ${p.render ? `<div class="card small">Último render: ${fmtDate(p.render.at)} · ${p.render.W}×${p.render.H}${p.render.fps ? ' · ' + p.render.fps + ' FPS' : ''} · ${p.render.ext.toUpperCase()} · ${fmtBytes(p.render.size)} · ${p.render.cloud ? 'guardado en la nube' : 'solo en esta sesión'}${p.render.stale ? ' · <span class="tag warn">desactualizado: hubo cambios</span>' : ''}</div>` : ''}
       ${nextBtn('Miniatura', 7)}</div>
       <div>${p.render && videoSrc() ? `<div class="canvasbox ${p.render.H > p.render.W ? 'vert' : ''}"><video id="rVid" controls playsinline src="${videoSrc()}" style="width:100%;display:block"></video></div><div class="row" style="margin-top:10px"><button class="btn" id="rDl">${icon('download')}Descargar video</button></div>` : '<div class="empty">El video aparecerá aquí.</div>'}</div></div>`;
     bindNext();
-    $('#qSel').onchange = async e => { settings.quality = e.target.value; await Store.set('settings', settings); const x = durEstimate(tl.duration, settings.quality); $('#rEst').textContent = `Archivo estimado: ≈ ${fmtBytes(x.size)}${x.cloud ? ' (cabe en la nube gratuita)' : ' · no cabe en la nube gratuita de 20 MB: al terminar, descárgalo antes de cerrar la página'}.`; };
+    const upd = async () => { settings.res = +$('#rRes').value; settings.fps = +$('#rFps').value; settings.qual = $('#rQual').value; await Store.set('settings', settings); stepRender(); };
+    ['#rRes', '#rFps', '#rQual'].forEach(s => $(s).onchange = upd);
     $('#rGo').onclick = e => UI.busy(e.currentTarget, async () => { await doRender(e.currentTarget); renderSteps(); stepRender(); UI.toast('Video renderizado.'); }, 'Renderizando…');
     $('#rCancel').onclick = () => { if (cancel) cancel.cancelled = true; };
     const dl = $('#rDl'); if (dl) dl.onclick = downloadVideo;

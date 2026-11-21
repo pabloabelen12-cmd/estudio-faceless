@@ -653,6 +653,27 @@ BG.gym_oscuro = (c, W, H, gy, t) => { const g = c.createLinearGradient(0, 0, 0, 
 BG.plano_azul = (c, W, H, gy, t) => { const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#dcecf8'); g.addColorStop(1, '#bcd6ea'); c.fillStyle = g; c.fillRect(-W, -H, W * 3, H * 3); grid(c, W, H, gy, W * .06, 'rgba(255,255,255,.7)'); };
 BG.rayos = (c, W, H, gy, t) => { c.fillStyle = '#f7f7f8'; c.fillRect(-W, -H, W * 3, H * 3); c.save(); c.translate(W * .6, H * .4); c.fillStyle = 'rgba(0,0,0,.035)'; for (let i = 0; i < 16; i++) { c.rotate(Math.PI / 8); c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.max(W, H) * 1.3, -Math.max(W, H) * .09); c.lineTo(Math.max(W, H) * 1.3, Math.max(W, H) * .09); c.closePath(); c.fill(); } c.restore(); c.fillStyle = 'rgba(0,0,0,.04)'; c.fillRect(-W, gy, W * 3, H); };
 /* casa humilde (falta de dinero) y mansión (riqueza): el guion elige el escenario */
+/* ---- fondos planos estilo explainer (azul pastel / azul marino), con nubes, edificios y puntos que se desplazan despacio ---- */
+const hsh = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+const flatBG = (c, W, H, gy, t, pal, dark) => {
+  const v = ((pal && pal.i) || 0) % 3;
+  const base = dark ? ['#2c3e50', '#26364a', '#2b4c7e'][v] : ['#d9e6f6', '#c7dcf5', '#a2bce8'][v];
+  const gnd = dark ? ['#243242', '#1f2c3d', '#223e68'][v] : ['#c3d4ea', '#b0c9ec', '#8ea9d9'][v];
+  const sil = dark ? 'rgba(255,255,255,.06)' : ['rgba(120,150,200,.28)', 'rgba(110,140,195,.3)', 'rgba(70,105,170,.3)'][v];
+  c.fillStyle = base; c.fillRect(-W, -H, W * 3, H * 3);
+  // edificios al fondo (siluetas) con desplazamiento lento
+  if (v !== 0) { c.fillStyle = sil; const bw = W * .07, off = (t * W * .006) % (bw * 2); for (let i = -2; i < 18; i++) { const h = H * (.14 + hsh(i + v * 9) * .26); c.fillRect(i * bw * 1.1 - off, gy - h, bw, h); } }
+  // nubes / destellos suaves
+  c.fillStyle = dark ? 'rgba(255,255,255,.05)' : 'rgba(255,255,255,.45)';
+  for (let k = 0; k < 4; k++) { const x = (((k * .31 + t * (.008 + k * .002)) % 1.5) - .25) * W, y = H * (.1 + (k * .29 % .34)), r = H * (.04 + (k % 3) * .02); c.beginPath(); c.arc(x, y, r, 0, 7); c.arc(x + r * 1.2, y + r * .25, r * .8, 0, 7); c.arc(x - r * 1.1, y + r * .3, r * .7, 0, 7); c.fill(); }
+  // suelo y línea de horizonte
+  c.fillStyle = gnd; c.fillRect(-W, gy, W * 3, H);
+  c.fillStyle = dark ? 'rgba(255,255,255,.1)' : 'rgba(30,50,90,.16)'; c.fillRect(-W, gy, W * 3, Math.max(3, H * .006));
+  // marcas del suelo que corren (da vida sin cansar)
+  c.fillStyle = dark ? 'rgba(255,255,255,.07)' : 'rgba(30,50,90,.09)'; const gw = W * .09, go = (t * W * .02) % (gw * 2); for (let i = -2; i < 14; i++) c.fillRect(i * gw * 2 - go, gy + H * .05, gw, Math.max(3, H * .008));
+};
+BG.x_pastel = (c, W, H, gy, t, pal) => flatBG(c, W, H, gy, t, pal, false);
+BG.x_navy = (c, W, H, gy, t, pal) => flatBG(c, W, H, gy, t, pal, true);
 BG.casa_humilde = (c, W, H, gy, t) => {
   c.fillStyle = '#6d6a5e'; c.fillRect(-W, -H, W * 3, H * 3);
   c.fillStyle = 'rgba(0,0,0,.12)'; for (let i = 0; i < 9; i++) { c.fillRect(-W * .2 + i * W * .17, H * (.08 + (i % 3) * .07), W * .09, H * .05); }
@@ -673,7 +694,7 @@ BG.mansion = (c, W, H, gy, t) => {
   c.fillStyle = '#f4f0ea'; rr(c, -W * .05, gy - H * .11, W * .46, H * .11, 22); c.fill(); c.fillStyle = '#e6dfd4'; rr(c, -W * .05, gy - H * .155, W * .44, H * .06, 18); c.fill(); c.fillStyle = '#c9a75a'; rr(c, W * .05, gy - H * .12, W * .07, H * .05, 8); c.fill();
   c.fillStyle = '#2d6a4f'; c.beginPath(); c.ellipse(W * .95, gy - H * .1, W * .05, H * .07, 0, 0, 7); c.fill(); c.fillStyle = '#c9a75a'; rr(c, W * .92, gy - H * .045, W * .06, H * .045, 4); c.fill();
 };
-Object.assign(BG_LABEL, {casa_humilde: 'Casa humilde (poco dinero)', mansion: 'Mansión (riqueza)'});
+Object.assign(BG_LABEL, {casa_humilde: 'Casa humilde (poco dinero)', mansion: 'Mansión (riqueza)', x_pastel: 'Azul pastel (explainer)', x_navy: 'Azul marino (dramático)'});
 Art.bgKeys = Object.keys(BG);
 /* textura de suelo en movimiento para locomoción */
 Art.groundMotion = (c, W, H, gy, t, speed) => { if (!speed) return; c.save(); c.globalAlpha = .25; c.fillStyle = '#fff'; const sp = speed * W * .02; for (let x = -((t * sp) % (W * .16)); x < W * 1.2; x += W * .16) c.fillRect(x, gy + H * .015, W * .06, Math.max(2, H * .004)); c.restore(); };
@@ -714,19 +735,37 @@ OB.book = (c, s, t) => { c.fillStyle = B; rr(c, -60, -70, 120, 140, 8); c.fill()
 const EMO = Art.EMO = {coins: '🪙', chart_up: '📈', chart_down: '📉', piggy: '🐷', card: '💳', phone: '📱', cart: '🛒', box: '📦', calculator: '🧮', bills: '💵', house: '🏠', laptop: '💻', alarm: '⏰', target: '🎯', lightbulb: '💡', warning: '⚠️', check: '✅', cross: '❌', rocket: '🚀', bank: '🏦', percent: '💯', wallet: '👛', bars: '📊', dumbbell: '🏋️', heart: '❤️', muscle: '💪', timer: '⏱️', book: '📚',
   money: '💰', rich: '🤑', fire: '🔥', brain: '🧠', calendar: '🗓️', star: '⭐', trophy: '🏆', gem: '💎', handshake: '🤝', shock: '😱', think: '🤔', sleep: '😴', food: '🥗', water: '💧', clock: '⌛', store: '🏪', mail: '📩', key: '🔑', chain: '⛓️', growth: '🌱', medal: '🥇', bolt: '⚡', stop: '🛑', question: '❓', idea2: '✨', run: '🏃', bike: '🚴', stretch: '🧘', scale: '⚖️', car: '🚗', plane: '✈️', gift: '🎁'};
 Art.EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif';
+/* resorte amortiguado: sube, pasa de 1 (~20 %) y se asienta; es el "pop" de los videos explainer */
+Art.spring = t => t <= 0 ? 0 : t >= 1.1 ? 1 : 1 - Math.exp(-8 * t) * Math.cos(16 * t);
+/* los emojis se dibujan UNA vez con contorno y sombra en un sprite; cada cuadro solo lo copia (antes: filtros por cuadro = lento) */
+const _spr = new Map();
+Art.emojiSprite = (e, px) => {
+  const bk = Math.max(48, Math.ceil(px / 24) * 24), key = e + '|' + bk; let s = _spr.get(key); if (s) return s;
+  const f = Math.round(bk * .8), pad = Math.ceil(f * .3), S = f + pad * 2;
+  const mk = () => { const cv = document.createElement('canvas'); cv.width = cv.height = S; return cv; };
+  const em = mk(), ec = em.getContext('2d'); ec.font = `${f}px ${Art.EMOJI_FONT}`; ec.textAlign = 'center'; ec.textBaseline = 'middle'; ec.fillText(e, S / 2, S / 2 + f * .04);
+  const tint = col => { const t = mk(), tc = t.getContext('2d'); tc.drawImage(em, 0, 0); tc.globalCompositeOperation = 'source-in'; tc.fillStyle = col; tc.fillRect(0, 0, S, S); return t; };
+  const cv = mk(), c = cv.getContext('2d'), w = Math.max(2, f * .045), k = Math.max(1.5, f * .025);
+  const stamp = (img, r, dy = 0, n = 16) => { for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; c.drawImage(img, Math.cos(a) * r, Math.sin(a) * r + dy); } };
+  const dark = tint('#14213d'), white = tint('#ffffff');
+  c.globalAlpha = .16; for (let i = 1; i <= 3; i++) stamp(dark, w + k + i * f * .012, f * .05, 12); c.globalAlpha = 1;   // sombra suave
+  stamp(dark, w + k); stamp(white, w);                                                                                    // contorno oscuro + borde blanco
+  c.drawImage(em, 0, 0);
+  s = {cv, S, f, k: S / f}; _spr.set(key, s); return s;
+};
+/* dibuja el sprite centrado en (x,y); size = alto aproximado del emoji */
+Art.emojiStatic = (ctx, e, x, y, size) => { const s = Art.emojiSprite(e, size), d = size * .8 * s.k; ctx.drawImage(s.cv, x - d / 2, y - d / 2, d, d); };
 Art.sticker = (ctx, e, x, y, size, t = 1) => {
-  const pop = Math.min(1, t / .4), k = pop < 1 ? Math.sin(pop * Math.PI / 2) * (1 + .25 * Math.sin(pop * Math.PI)) : 1;
-  ctx.save(); ctx.translate(x, y + Math.sin(t * 2.2 + x * .01) * size * .03); ctx.rotate(Math.sin(t * 1.3 + x * .02) * .06); ctx.scale(k, k);
-  ctx.globalAlpha *= Math.min(1, t / .2);
-  ctx.font = `${Math.round(size * .78)}px ${Art.EMOJI_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  const o = Math.max(2, size * .035);
-  ctx.filter = `drop-shadow(0 0 ${o}px #fff) drop-shadow(0 0 ${o * .6}px #fff) drop-shadow(0 ${size * .06}px ${size * .08}px rgba(0,0,0,.35))`;
-  ctx.fillText(e, 0, 0); ctx.filter = 'none'; ctx.restore();
+  const k = Art.spring(t / .9);
+  if (k <= 0.001) return;
+  ctx.save(); ctx.translate(x, y + Math.sin(t * 2.2 + x * .01) * size * .03); ctx.rotate(Math.sin(t * 1.3 + x * .02) * .06 + (1 - k) * -.35); ctx.scale(k, k);
+  ctx.globalAlpha *= Math.min(1, t / .12);
+  Art.emojiStatic(ctx, e, 0, 0, size); ctx.restore();
 };
 Art.drawObject = (ctx, key, x, y, size, t) => {
   if (EMO[key]) return Art.sticker(ctx, EMO[key], x, y, size, t);
   const f = OB[key]; if (!f) return;
-  const pop = Math.min(1, t / .35), s = size / 160 * (pop < 1 ? (1.15 * Math.sin(pop * Math.PI / 2) + (pop > .8 ? -.15 * (pop - .8) / .2 : 0)) : 1);
+  const s = size / 160 * Art.spring(t / .9); if (s <= .001) return;
   ctx.save(); ctx.translate(x, y + Math.sin(t * 2.2 + x) * size * .02); ctx.scale(s, s); ctx.globalAlpha *= Math.min(1, t / .2); f(ctx, size, t); ctx.restore();
 };
 })();
